@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { SITE_NAME } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +51,7 @@ export default async function LeaderboardPage() {
   return (
     <main className="flex flex-1 flex-col items-center px-4 py-12 gap-8 max-w-lg mx-auto w-full">
       <header className="text-center">
-        <p className="eyebrow">{challenge ? `Rent Hunch #${challenge.edition}` : "Leaderboard"}</p>
+        <p className="eyebrow">{challenge ? `${SITE_NAME} #${challenge.edition}` : "Leaderboard"}</p>
         <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-paper">Leaderboard</h1>
         <Link href="/" className="mt-2 inline-block text-sm text-faint hover:text-paper transition">← Back to today</Link>
       </header>

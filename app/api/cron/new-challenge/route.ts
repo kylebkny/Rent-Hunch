@@ -24,17 +24,20 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true, message: "Already rolled over", challenge_id: existing.id });
   }
 
+  // Only vetted, active listings are eligible. Manual entries are 'ready'
+  // immediately; scraped ones must be promoted from 'draft' first.
   const { data: listing, error: listingError } = await admin
     .from("listings")
     .select("id")
     .eq("status", "active")
+    .eq("review_status", "ready")
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
 
   if (listingError || !listing) {
     return NextResponse.json(
-      { error: "No active listings left to feature" },
+      { error: "No ready listings left to feature" },
       { status: 500 }
     );
   }

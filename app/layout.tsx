@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, IBM_Plex_Mono } from "next/font/google";
+import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/brand";
 import "./globals.css";
 
 const inter = Inter({
@@ -13,26 +14,23 @@ const plexMono = IBM_Plex_Mono({
   weight: ["400", "500", "600"],
 });
 
-const siteUrl = "https://game.resios.co";
+const title = `${SITE_NAME} — Guess the Brooklyn rent`;
 
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
-  title: "Rent Hunch — Guess the Brooklyn rent",
-  description:
-    "A daily rent-price-guessing game. Study the listing, lock your guess, see how close you got. New Brooklyn rental every day.",
+  metadataBase: new URL(SITE_URL),
+  title,
+  description: `A daily rent-price-guessing game. ${SITE_TAGLINE} New Brooklyn rental every day.`,
   openGraph: {
-    title: "Rent Hunch — Guess the Brooklyn rent",
-    description:
-      "A daily rent-price-guessing game. Study the listing, lock your guess, see how close you got.",
-    url: siteUrl,
-    siteName: "Rent Hunch",
+    title,
+    description: `A daily rent-price-guessing game. ${SITE_TAGLINE}`,
+    url: SITE_URL,
+    siteName: SITE_NAME,
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Rent Hunch — Guess the Brooklyn rent",
-    description:
-      "A daily rent-price-guessing game. Study the listing, lock your guess, see how close you got.",
+    title,
+    description: `A daily rent-price-guessing game. ${SITE_TAGLINE}`,
   },
 };
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { MAX_POSSIBLE_SCORE, roundTrailEmoji } from "@/lib/scoring";
 import { shareResult } from "@/lib/share";
+import { SITE_NAME } from "@/lib/brand";
 
 interface RevealScreenProps {
   edition: number;
@@ -37,7 +38,7 @@ export function RevealScreen({
 
   return (
     <div className="w-full max-w-md mx-auto flex flex-col gap-6 rounded-3xl bg-paper text-ink p-6 shadow-2xl shadow-black/40">
-      <p className="eyebrow text-center">Rent Hunch #{edition}</p>
+      <p className="eyebrow text-center">{SITE_NAME} #{edition}</p>
 
       {photos.length > 0 && (
         <div className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-1">

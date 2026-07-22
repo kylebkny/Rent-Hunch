@@ -1,7 +1,8 @@
 import { ImageResponse } from "next/og";
+import { SITE_NAME } from "@/lib/brand";
 
 export const runtime = "edge";
-export const alt = "Rent Hunch — Guess the Brooklyn rent";
+export const alt = "What's the Rent — Guess the Brooklyn rent";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -41,7 +42,7 @@ export default async function Image() {
             letterSpacing: -3,
           }}
         >
-          Rent Hunch
+          {SITE_NAME}
         </div>
         <div
           style={{

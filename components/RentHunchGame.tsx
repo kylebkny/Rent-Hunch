@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/browser";
 import { GameCard } from "@/components/GameCard";
 import { RevealScreen } from "@/components/RevealScreen";
+import { SITE_NAME } from "@/lib/brand";
 import type { GuessResponse, TodayChallengeResponse } from "@/lib/types";
 
 type CachedReveal = GuessResponse & { guess_amount: number };
@@ -129,7 +130,7 @@ export function RentHunchGame() {
   if (status === "played-elsewhere" && today?.guess) {
     return (
       <div className="w-full max-w-md mx-auto rounded-3xl bg-paper text-ink p-8 text-center flex flex-col gap-3 shadow-2xl shadow-black/40">
-        <p className="eyebrow">Rent Hunch #{today.edition}</p>
+        <p className="eyebrow">{SITE_NAME} #{today.edition}</p>
         <p className="text-muted">You already played today.</p>
         <p className="text-3xl font-bold tabular-nums">{today.guess.score}/1000 pts</p>
         <p className="text-sm text-muted tabular-nums">

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient as createAuthClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { SITE_NAME } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +61,7 @@ export default async function HistoryPage() {
                 className="flex justify-between items-center rounded-2xl bg-paper text-ink px-5 py-4 shadow-lg shadow-black/30"
               >
                 <div>
-                  <div className="font-semibold">Rent Hunch #{challenge?.edition ?? "—"}</div>
+                  <div className="font-semibold">{SITE_NAME} #{challenge?.edition ?? "—"}</div>
                   <div className="text-muted text-xs">{challenge?.challenge_date}</div>
                 </div>
                 <div className="text-right">
