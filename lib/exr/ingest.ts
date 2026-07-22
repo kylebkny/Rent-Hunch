@@ -61,10 +61,14 @@ function toInsertRow(raw: ExrListingRaw) {
  */
 export async function ingestScrapedListings(
   admin: SupabaseClient,
-  scraped: ExrListingRaw[]
+  scraped: ExrListingRaw[],
+  seenUrls: string[]
 ): Promise<IngestResult> {
   const usable = scraped.filter((r) => isBrooklyn(r) && isComplete(r));
   const skipped = scraped.length - usable.length;
+  // Every URL the site showed this run — used for conservative off-market
+  // detection (a listing is only "gone" when absent from the whole site).
+  const seen = new Set(seenUrls);
 
   const { data: existingRows } = await admin
     .from("listings")
@@ -76,21 +80,19 @@ export async function ingestScrapedListings(
     if (row.exr_listing_url) existing.set(row.exr_listing_url, { id: row.id, status: row.status });
   }
 
-  const seen = new Set<string>();
   const toInsert: ReturnType<typeof toInsertRow>[] = [];
   let updated = 0;
 
   for (const raw of usable) {
-    seen.add(raw.exr_listing_url);
     const found = existing.get(raw.exr_listing_url);
     if (!found) {
       toInsert.push(toInsertRow(raw));
     } else if (found.status !== "used") {
-      // Refresh volatile fields; don't touch a human's review_status.
-      await admin
-        .from("listings")
-        .update({ actual_rent: raw.rent!, photos: raw.photos, is_off_market: false })
-        .eq("id", found.id);
+      // Refresh volatile fields; never wipe existing photos with an empty
+      // set, and never touch a human's review_status.
+      const update: Record<string, unknown> = { actual_rent: raw.rent!, is_off_market: false };
+      if (raw.photos.length > 0) update.photos = raw.photos;
+      await admin.from("listings").update(update).eq("id", found.id);
       updated++;
     }
   }
@@ -101,8 +103,9 @@ export async function ingestScrapedListings(
     if (!error && data) inserted = data.length;
   }
 
-  // Absence => off-market. Any previously-seen EXR listing not in this scrape
-  // (and not already used) has left the site: mark it off-market/featurable.
+  // Absence => off-market. Any previously-seen EXR listing not present
+  // ANYWHERE on the site this run (and not already used) has left the site:
+  // mark it off-market/featurable.
   const absentIds = (existingRows ?? [])
     .filter((row) => row.exr_listing_url && !seen.has(row.exr_listing_url) && row.status !== "used")
     .map((row) => row.id);
