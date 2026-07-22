@@ -124,18 +124,19 @@ export function GameCard({ clues, photos, round, attempts, onSubmit, submitting 
       )}
 
       <div className="flex flex-col gap-3">
-        <label className="eyebrow">Your guess — monthly rent</label>
-        <div className="flex items-center gap-1">
-          <span className="text-2xl font-semibold">$</span>
-          <input
-            type="number"
-            min={0}
-            step={STEP}
-            value={guess}
-            onChange={(e) => setGuess(Number(e.target.value))}
-            className="flex-1 bg-transparent text-2xl font-semibold tracking-tight text-ink focus:outline-none border-b-2 border-ink pb-1"
-          />
-        </div>
+        <label className="eyebrow text-center">Tap to type · or drag the slider</label>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={`$${guess.toLocaleString()}`}
+          onChange={(e) => {
+            const digits = e.target.value.replace(/[^0-9]/g, "").slice(0, 6);
+            setGuess(digits ? Number(digits) : 0);
+          }}
+          onFocus={(e) => e.target.select()}
+          aria-label="Your guess in dollars"
+          className="w-full text-center text-5xl font-extrabold tracking-tight text-ink tabular-nums bg-transparent focus:outline-none caret-ink"
+        />
         <input
           type="range"
           min={SLIDER_MIN}
@@ -156,7 +157,7 @@ export function GameCard({ clues, photos, round, attempts, onSubmit, submitting 
           <>
             <button
               onClick={() => submit(false)}
-              disabled={submitting}
+              disabled={submitting || guess <= 0}
               className="w-full rounded-full bg-ink text-paper font-semibold py-3.5 px-6 hover:bg-ink-soft transition disabled:opacity-50"
             >
               Submit guess · {guessesLeft} left
@@ -172,7 +173,7 @@ export function GameCard({ clues, photos, round, attempts, onSubmit, submitting 
         ) : (
           <button
             onClick={() => submit(true)}
-            disabled={submitting}
+            disabled={submitting || guess <= 0}
             className="w-full rounded-full bg-ink text-paper font-semibold py-3.5 px-6 hover:bg-ink-soft transition disabled:opacity-50"
           >
             Final guess — lock it in
