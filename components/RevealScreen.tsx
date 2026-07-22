@@ -99,6 +99,17 @@ export function RevealScreen({
         <div className="text-2xl tracking-widest">{roundTrailEmoji(round)}</div>
       </div>
 
+      <p className="text-center text-sm text-muted">
+        You were{" "}
+        <span className="font-semibold text-ink tabular-nums">
+          ${Math.abs(guessAmount - actualRent).toLocaleString()}
+        </span>{" "}
+        off ·{" "}
+        <span className="tabular-nums">
+          {Math.round((Math.abs(guessAmount - actualRent) / actualRent) * 100)}%
+        </span>
+      </p>
+
       <dl className="grid grid-cols-2 gap-3 text-sm border-y border-line py-4">
         <div>
           <dt className="eyebrow">Your guess</dt>

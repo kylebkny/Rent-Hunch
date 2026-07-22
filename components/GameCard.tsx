@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { BuildingFacade } from "@/components/BuildingFacade";
 import { PhotoReveal } from "@/components/PhotoReveal";
-import { ROUND_MAX_SCORE } from "@/lib/scoring";
+import { roundMaxScore } from "@/lib/scoring";
 import { sfx } from "@/lib/sound";
 import { buzz } from "@/lib/haptics";
 import type { ListingClues } from "@/lib/types";
@@ -139,7 +139,7 @@ export function GameCard({
           disabled={submitting}
           className="w-full rounded-full bg-ink text-paper font-semibold py-3.5 px-6 hover:bg-ink-soft transition disabled:opacity-50"
         >
-          Lock guess · up to {ROUND_MAX_SCORE[round]} pts
+          Lock guess · up to {roundMaxScore(round)} pts
         </button>
         {round < MAX_ROUND && (
           <button
