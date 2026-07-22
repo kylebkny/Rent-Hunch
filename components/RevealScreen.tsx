@@ -12,6 +12,7 @@ interface RevealScreenProps {
   score: number;
   actualRent: number;
   crowdAvg: number;
+  photos: string[];
 }
 
 export function RevealScreen({
@@ -21,6 +22,7 @@ export function RevealScreen({
   score,
   actualRent,
   crowdAvg,
+  photos,
 }: RevealScreenProps) {
   const [shareStatus, setShareStatus] = useState<string | null>(null);
 
@@ -36,6 +38,20 @@ export function RevealScreen({
   return (
     <div className="w-full max-w-md mx-auto flex flex-col gap-6 rounded-3xl bg-paper text-ink p-6 shadow-2xl shadow-black/40">
       <p className="eyebrow text-center">Rent Hunch #{edition}</p>
+
+      {photos.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-1">
+          {photos.map((photo, i) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={i}
+              src={photo}
+              alt={`Listing photo ${i + 1}`}
+              className={`${photos.length === 1 ? "w-full" : "w-52 shrink-0"} aspect-[16/10] object-cover rounded-2xl`}
+            />
+          ))}
+        </div>
+      )}
 
       <div className="relative h-40 flex items-center justify-center rounded-2xl bg-mist">
         <div className="animate-stamp-in absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border-[3px] border-ink px-8 py-3 rotate-[-7deg]">

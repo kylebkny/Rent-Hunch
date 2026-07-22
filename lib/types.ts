@@ -19,6 +19,8 @@ export interface TodayChallengeResponse {
   edition: number;
   challenge_date: string;
   clues: ListingClues;
+  /** Ordered listing photos, revealed progressively. Empty => SVG facade. */
+  photos: string[];
   /** Present if the caller already locked a guess today. */
   guess: {
     round: number;

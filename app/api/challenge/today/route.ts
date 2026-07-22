@@ -23,7 +23,7 @@ export async function GET() {
 
   const { data: challenge, error: challengeError } = await admin
     .from("daily_challenges")
-    .select("id, edition, challenge_date, listings(neighborhood, city, beds, baths, sqft, amenities, transit, nearby)")
+    .select("id, edition, challenge_date, listings(neighborhood, city, beds, baths, sqft, amenities, transit, nearby, photos)")
     .eq("challenge_date", challengeDate)
     .maybeSingle();
 
@@ -73,6 +73,7 @@ export async function GET() {
       transit: listing.transit,
       nearby: listing.nearby ?? null,
     },
+    photos: Array.isArray(listing.photos) ? (listing.photos as string[]) : [],
     guess: existingGuess
       ? {
           round: existingGuess.round,

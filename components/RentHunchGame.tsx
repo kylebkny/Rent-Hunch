@@ -151,6 +151,7 @@ export function RentHunchGame() {
         score={reveal.score}
         actualRent={reveal.actual_rent}
         crowdAvg={reveal.crowd_avg}
+        photos={today.photos}
       />
     );
   }
@@ -159,6 +160,7 @@ export function RentHunchGame() {
     return (
       <GameCard
         clues={today.clues}
+        photos={today.photos}
         initialRound={today.game_state?.current_round ?? 0}
         onAdvanceRound={handleAdvanceRound}
         onLockGuess={handleLockGuess}

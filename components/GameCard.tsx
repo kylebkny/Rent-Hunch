@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { BuildingFacade } from "@/components/BuildingFacade";
+import { PhotoReveal } from "@/components/PhotoReveal";
 import { ROUND_MAX_SCORE } from "@/lib/scoring";
 import type { ListingClues } from "@/lib/types";
 
@@ -9,6 +10,7 @@ const MAX_ROUND = 3;
 
 interface GameCardProps {
   clues: ListingClues;
+  photos: string[];
   initialRound: number;
   onAdvanceRound: (round: number) => Promise<void>;
   onLockGuess: (guessAmount: number) => Promise<void>;
@@ -17,6 +19,7 @@ interface GameCardProps {
 
 export function GameCard({
   clues,
+  photos,
   initialRound,
   onAdvanceRound,
   onLockGuess,
@@ -55,9 +58,13 @@ export function GameCard({
         </div>
       </div>
 
-      <div className="rounded-2xl bg-mist py-4">
-        <BuildingFacade round={round} />
-      </div>
+      {photos.length > 0 ? (
+        <PhotoReveal photos={photos} round={round} />
+      ) : (
+        <div className="rounded-2xl bg-mist py-4">
+          <BuildingFacade round={round} />
+        </div>
+      )}
 
       <div>
         <p className="eyebrow mb-3">Filed details</p>
