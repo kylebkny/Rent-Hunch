@@ -26,11 +26,14 @@ export async function GET(request: Request) {
 
   // Only vetted, active listings are eligible. Manual entries are 'ready'
   // immediately; scraped ones must be promoted from 'draft' first.
+  // is_off_market must be true so we never publish the asking price of a
+  // still-on-market EXR unit. Manual listings default to off_market=true.
   const { data: listing, error: listingError } = await admin
     .from("listings")
     .select("id")
     .eq("status", "active")
     .eq("review_status", "ready")
+    .eq("is_off_market", true)
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();

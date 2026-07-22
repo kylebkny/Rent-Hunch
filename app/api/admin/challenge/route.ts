@@ -28,6 +28,22 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   const challengeDate = todayET();
 
+  // Safety: never feature a still-on-market listing (would leak a live rent).
+  const { data: listing } = await admin
+    .from("listings")
+    .select("is_off_market")
+    .eq("id", body.listing_id)
+    .maybeSingle();
+  if (!listing) {
+    return NextResponse.json({ error: "Listing not found" }, { status: 404 });
+  }
+  if (!listing.is_off_market) {
+    return NextResponse.json(
+      { error: "Listing is still on-market — mark it off-market before featuring" },
+      { status: 409 }
+    );
+  }
+
   const { data: existing } = await admin
     .from("daily_challenges")
     .select("id")

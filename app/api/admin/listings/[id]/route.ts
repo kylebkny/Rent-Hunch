@@ -15,11 +15,13 @@ interface PatchBody {
   photos?: string[];
   review_status?: "draft" | "ready";
   status?: "active" | "used";
+  is_off_market?: boolean;
 }
 
 const ALLOWED_FIELDS: (keyof PatchBody)[] = [
   "neighborhood", "city", "beds", "baths", "sqft", "amenities",
   "transit", "nearby", "actual_rent", "photos", "review_status", "status",
+  "is_off_market",
 ];
 
 export async function PATCH(

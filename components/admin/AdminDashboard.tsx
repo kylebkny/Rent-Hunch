@@ -18,6 +18,7 @@ interface Listing {
   source: "manual" | "exr";
   review_status: "draft" | "ready";
   status: "active" | "used";
+  is_off_market: boolean;
 }
 
 const EMPTY_FORM = {
@@ -249,13 +250,21 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                 <Tag>{l.source}</Tag>
                 <Tag tone={l.review_status === "ready" ? "green" : "amber"}>{l.review_status}</Tag>
                 <Tag>{l.status}</Tag>
+                <Tag tone={l.is_off_market ? "green" : "amber"}>
+                  {l.is_off_market ? "off-market" : "on-market"}
+                </Tag>
                 <span>{l.photos.length} photo{l.photos.length === 1 ? "" : "s"}</span>
               </div>
             </div>
             <div className="flex flex-col gap-1.5 shrink-0 text-xs">
-              {l.status === "active" && (
+              {l.status === "active" && l.is_off_market && (
                 <button onClick={() => setAsToday(l.id)} className="rounded-full bg-ink text-paper px-3 py-1.5 font-medium">
                   Set as today
+                </button>
+              )}
+              {!l.is_off_market && (
+                <button onClick={() => patchListing(l.id, { is_off_market: true })} className="rounded-full border border-line px-3 py-1.5">
+                  Mark off-market
                 </button>
               )}
               {l.review_status === "draft" ? (

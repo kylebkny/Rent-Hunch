@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/new-challenge",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/sync-exr",
+      "schedule": "0 8 * * 1"
     }
   ]
 }
