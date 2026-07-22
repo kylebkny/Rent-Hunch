@@ -4,6 +4,8 @@ import { useState } from "react";
 import { BuildingFacade } from "@/components/BuildingFacade";
 import { PhotoReveal } from "@/components/PhotoReveal";
 import { ROUND_MAX_SCORE } from "@/lib/scoring";
+import { sfx } from "@/lib/sound";
+import { buzz } from "@/lib/haptics";
 import type { ListingClues } from "@/lib/types";
 
 const MAX_ROUND = 3;
@@ -35,6 +37,8 @@ export function GameCard({
     try {
       await onAdvanceRound(next);
       setRound(next);
+      sfx.reveal();
+      buzz.reveal();
     } finally {
       setAdvancing(false);
     }
@@ -42,6 +46,14 @@ export function GameCard({
 
   function adjustGuess(pct: number) {
     setGuess((g) => Math.max(0, Math.round(g * (1 + pct))));
+    sfx.tick();
+    buzz.tick();
+  }
+
+  function handleLock() {
+    sfx.lock();
+    buzz.lock();
+    onLockGuess(guess);
   }
 
   return (
@@ -123,7 +135,7 @@ export function GameCard({
 
       <div className="flex flex-col gap-3">
         <button
-          onClick={() => onLockGuess(guess)}
+          onClick={handleLock}
           disabled={submitting}
           className="w-full rounded-full bg-ink text-paper font-semibold py-3.5 px-6 hover:bg-ink-soft transition disabled:opacity-50"
         >

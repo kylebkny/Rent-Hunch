@@ -1,10 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { MAX_POSSIBLE_SCORE, roundTrailEmoji } from "@/lib/scoring";
 import { shareResult } from "@/lib/share";
 import { SITE_NAME } from "@/lib/brand";
+import { sfx } from "@/lib/sound";
+import { buzz } from "@/lib/haptics";
+import { useCountUp } from "@/lib/useCountUp";
+import { Confetti } from "@/components/Confetti";
+
+const CONFETTI_THRESHOLD = 700;
 
 interface RevealScreenProps {
   edition: number;
@@ -26,6 +32,24 @@ export function RevealScreen({
   photos,
 }: RevealScreenProps) {
   const [shareStatus, setShareStatus] = useState<string | null>(null);
+  const played = useRef(false);
+  const celebrate = score >= CONFETTI_THRESHOLD;
+
+  const displayScore = useCountUp(score, 1000);
+  const displayRent = useCountUp(actualRent, 1100);
+
+  // Fire the reveal sound/haptics once, on mount.
+  useEffect(() => {
+    if (played.current) return;
+    played.current = true;
+    if (celebrate) {
+      sfx.win(score);
+      buzz.win();
+    } else {
+      sfx.low();
+      buzz.low();
+    }
+  }, [score, celebrate]);
 
   async function handleShare() {
     setShareStatus(null);
@@ -38,6 +62,7 @@ export function RevealScreen({
 
   return (
     <div className="w-full max-w-md mx-auto flex flex-col gap-6 rounded-3xl bg-paper text-ink p-6 shadow-2xl shadow-black/40">
+      {celebrate && <Confetti />}
       <p className="eyebrow text-center">{SITE_NAME} #{edition}</p>
 
       {photos.length > 0 && (
@@ -58,7 +83,7 @@ export function RevealScreen({
         <div className="animate-stamp-in absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border-[3px] border-ink px-8 py-3 rotate-[-7deg]">
           <div className="eyebrow text-center !text-ink mb-0.5">Actual rent</div>
           <div className="text-4xl font-bold tracking-tight text-center tabular-nums">
-            ${actualRent.toLocaleString()}
+            ${displayRent.toLocaleString()}
           </div>
         </div>
       </div>
@@ -68,7 +93,7 @@ export function RevealScreen({
           className="inline-flex items-baseline gap-2 rounded-full px-4 py-1.5"
           style={{ backgroundColor: "var(--color-success-bg)", color: "var(--color-success)" }}
         >
-          <span className="text-2xl font-bold tabular-nums">{score}</span>
+          <span className="text-2xl font-bold tabular-nums">{displayScore}</span>
           <span className="text-sm font-medium">/ {MAX_POSSIBLE_SCORE} pts · {scorePct}%</span>
         </div>
         <div className="text-2xl tracking-widest">{roundTrailEmoji(round)}</div>
