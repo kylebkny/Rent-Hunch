@@ -42,87 +42,105 @@ export function GameCard({
   }
 
   return (
-    <div className="w-full max-w-md mx-auto flex flex-col gap-6 border border-paper-dim/40 rounded-lg p-6 bg-ink-navy">
-      <div className="text-center">
-        <p className="font-mono text-xs tracking-[0.2em] uppercase text-paper-dim mb-2">
-          Property Record — Round {round + 1} of {MAX_ROUND + 1}
-        </p>
+    <div className="w-full max-w-md mx-auto flex flex-col gap-6 rounded-3xl bg-paper text-ink p-6 shadow-2xl shadow-black/40">
+      <div className="flex items-center justify-between">
+        <p className="eyebrow">Listing {round + 1} of {MAX_ROUND + 1}</p>
+        <div className="flex gap-1">
+          {Array.from({ length: MAX_ROUND + 1 }).map((_, i) => (
+            <span
+              key={i}
+              className={`h-1.5 w-6 rounded-full ${i <= round ? "bg-ink" : "bg-line"}`}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-2xl bg-mist py-4">
         <BuildingFacade round={round} />
       </div>
 
-      <div className="font-mono text-sm">
-        <p className="uppercase text-xs tracking-[0.2em] text-brick-red mb-2">Filed Details</p>
-        <ul className="flex flex-col gap-1.5 text-paper-dim">
-          <li>
-            <span className="text-paper">{clues.neighborhood}</span>, {clues.city}
-          </li>
+      <div>
+        <p className="eyebrow mb-3">Filed details</p>
+        <dl className="flex flex-col divide-y divide-line text-sm">
+          <ClueRow label="Neighborhood" value={`${clues.neighborhood}, ${clues.city}`} />
           {round >= 1 && (
-            <li>
-              <span className="text-paper">{clues.beds}</span> bed /{" "}
-              <span className="text-paper">{clues.baths}</span> bath ·{" "}
-              <span className="text-paper">{clues.sqft.toLocaleString()}</span> sqft
-            </li>
+            <ClueRow
+              label="Layout"
+              value={
+                `${clues.beds === 0 ? "Studio" : `${clues.beds} bed`} · ${clues.baths} bath` +
+                (clues.sqft ? ` · ${clues.sqft.toLocaleString()} sqft` : "")
+              }
+            />
           )}
           {round >= 2 && (
-            <li>
-              {clues.amenities.length > 0 ? clues.amenities.join(" · ") : "No listed amenities"}
-            </li>
+            <ClueRow
+              label="Amenities"
+              value={clues.amenities.length > 0 ? clues.amenities.join(" · ") : "None on file"}
+            />
           )}
-          {round >= 3 && <li>{clues.transit}</li>}
-        </ul>
+          {round >= 3 && <ClueRow label="Nearest train" value={clues.transit} />}
+          {round >= 3 && clues.nearby && <ClueRow label="Nearby" value={clues.nearby} />}
+        </dl>
       </div>
 
       <div className="flex flex-col gap-3">
-        <label className="font-mono text-xs uppercase tracking-[0.2em] text-paper-dim">
-          Your guess (monthly rent)
-        </label>
-        <div className="flex items-center gap-2">
-          <span className="font-display text-2xl text-paper">$</span>
+        <label className="eyebrow">Your guess — monthly rent</label>
+        <div className="flex items-center gap-1 border-b-2 border-ink pb-1">
+          <span className="text-2xl font-semibold">$</span>
           <input
             type="number"
             min={0}
             step={25}
             value={guess}
             onChange={(e) => setGuess(Number(e.target.value))}
-            className="flex-1 bg-transparent border-b border-paper-dim text-2xl font-display text-paper focus:outline-none focus:border-brick-red py-1"
+            className="flex-1 bg-transparent text-2xl font-semibold tracking-tight text-ink focus:outline-none"
           />
         </div>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => adjustGuess(-0.1)}
-            className="flex-1 border border-paper-dim/50 rounded py-1.5 text-sm font-mono hover:border-paper"
+            className="flex-1 rounded-full border border-line py-2 text-sm font-medium hover:border-ink transition"
           >
             −10%
           </button>
           <button
             type="button"
             onClick={() => adjustGuess(0.1)}
-            className="flex-1 border border-paper-dim/50 rounded py-1.5 text-sm font-mono hover:border-paper"
+            className="flex-1 rounded-full border border-line py-2 text-sm font-medium hover:border-ink transition"
           >
             +10%
           </button>
         </div>
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-3">
         <button
           onClick={() => onLockGuess(guess)}
           disabled={submitting}
-          className="w-full rounded-md bg-brick-red text-paper font-medium py-3 px-6 hover:brightness-110 transition disabled:opacity-50"
+          className="w-full rounded-full bg-ink text-paper font-semibold py-3.5 px-6 hover:bg-ink-soft transition disabled:opacity-50"
         >
-          Lock guess — up to {ROUND_MAX_SCORE[round]} pts
+          Lock guess · up to {ROUND_MAX_SCORE[round]} pts
         </button>
         {round < MAX_ROUND && (
           <button
             onClick={handleNextClue}
             disabled={advancing || submitting}
-            className="w-full text-sm font-mono text-paper-dim underline disabled:opacity-50"
+            className="w-full text-sm font-medium text-muted hover:text-ink transition disabled:opacity-50"
           >
-            {advancing ? "Loading…" : "See next clue"}
+            {advancing ? "Loading…" : "Reveal next clue →"}
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+function ClueRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 py-2.5">
+      <dt className="eyebrow shrink-0">{label}</dt>
+      <dd className="text-right font-medium text-ink">{value}</dd>
     </div>
   );
 }

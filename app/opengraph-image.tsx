@@ -16,17 +16,29 @@ export default async function Image() {
           flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
-          background: "#14181f",
-          color: "#eee6d8",
-          fontFamily: "Georgia, serif",
+          background: "#000000",
+          color: "#ffffff",
+          fontFamily: "sans-serif",
         }}
       >
         <div
           style={{
             display: "flex",
-            fontSize: 96,
-            fontWeight: 700,
-            letterSpacing: -2,
+            fontSize: 34,
+            color: "#9ca3af",
+            letterSpacing: 6,
+            textTransform: "uppercase",
+            marginBottom: 20,
+          }}
+        >
+          Daily Rent Game · Brooklyn
+        </div>
+        <div
+          style={{
+            display: "flex",
+            fontSize: 108,
+            fontWeight: 800,
+            letterSpacing: -3,
           }}
         >
           Rent Hunch
@@ -34,24 +46,12 @@ export default async function Image() {
         <div
           style={{
             display: "flex",
-            marginTop: 24,
-            fontSize: 34,
-            color: "#b4432e",
-            letterSpacing: 2,
-            textTransform: "uppercase",
+            marginTop: 28,
+            fontSize: 30,
+            color: "#e5e7eb",
           }}
         >
-          Guess today&apos;s Brooklyn rent
-        </div>
-        <div
-          style={{
-            display: "flex",
-            marginTop: 40,
-            fontSize: 22,
-            color: "#5c8a72",
-          }}
-        >
-          A new listing, every day
+          Study the listing. Lock your guess.
         </div>
       </div>
     ),

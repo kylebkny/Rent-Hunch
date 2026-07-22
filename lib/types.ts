@@ -5,9 +5,13 @@ export interface ListingClues {
   city: string;
   beds: number;
   baths: number;
-  sqft: number;
+  /** Rentals rarely have sqft on file, so this is optional. */
+  sqft: number | null;
   amenities: Amenities;
+  /** Nearest train stop(s). */
   transit: string;
+  /** "Places it's near" — parks, landmarks, etc. */
+  nearby: string | null;
 }
 
 export interface TodayChallengeResponse {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { MAX_POSSIBLE_SCORE, roundTrailEmoji } from "@/lib/scoring";
 import { shareResult } from "@/lib/share";
 
@@ -30,52 +31,54 @@ export function RevealScreen({
     if (result === "failed") setShareStatus("Couldn't share — try again.");
   }
 
-  return (
-    <div className="w-full max-w-md mx-auto flex flex-col items-center gap-6 text-center">
-      <p className="font-mono text-xs tracking-[0.2em] uppercase text-paper-dim">
-        Rent Hunch #{edition}
-      </p>
+  const scorePct = Math.round((score / MAX_POSSIBLE_SCORE) * 100);
 
-      <div className="relative w-full h-40 flex items-center justify-center">
-        <div className="animate-stamp-in absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border-4 border-brick-red text-brick-red px-8 py-4 rotate-[-8deg]">
-          <div className="font-mono text-xs tracking-[0.3em] uppercase text-center mb-1">
-            Actual Rent
-          </div>
-          <div className="font-display text-4xl font-semibold text-center">
+  return (
+    <div className="w-full max-w-md mx-auto flex flex-col gap-6 rounded-3xl bg-paper text-ink p-6 shadow-2xl shadow-black/40">
+      <p className="eyebrow text-center">Rent Hunch #{edition}</p>
+
+      <div className="relative h-40 flex items-center justify-center rounded-2xl bg-mist">
+        <div className="animate-stamp-in absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border-[3px] border-ink px-8 py-3 rotate-[-7deg]">
+          <div className="eyebrow text-center !text-ink mb-0.5">Actual rent</div>
+          <div className="text-4xl font-bold tracking-tight text-center tabular-nums">
             ${actualRent.toLocaleString()}
           </div>
         </div>
       </div>
 
-      <div className="flex flex-col items-center gap-1">
-        <div className="font-display text-2xl">
-          {score}/{MAX_POSSIBLE_SCORE} pts
+      <div className="flex flex-col items-center gap-2">
+        <div
+          className="inline-flex items-baseline gap-2 rounded-full px-4 py-1.5"
+          style={{ backgroundColor: "var(--color-success-bg)", color: "var(--color-success)" }}
+        >
+          <span className="text-2xl font-bold tabular-nums">{score}</span>
+          <span className="text-sm font-medium">/ {MAX_POSSIBLE_SCORE} pts · {scorePct}%</span>
         </div>
         <div className="text-2xl tracking-widest">{roundTrailEmoji(round)}</div>
       </div>
 
-      <dl className="w-full grid grid-cols-2 gap-3 text-sm font-mono text-paper-dim border-t border-b border-paper-dim/30 py-4">
+      <dl className="grid grid-cols-2 gap-3 text-sm border-y border-line py-4">
         <div>
-          <dt className="uppercase text-xs tracking-wide">Your guess</dt>
-          <dd className="text-paper text-lg">${guessAmount.toLocaleString()}</dd>
+          <dt className="eyebrow">Your guess</dt>
+          <dd className="text-lg font-semibold tabular-nums">${guessAmount.toLocaleString()}</dd>
         </div>
-        <div>
-          <dt className="uppercase text-xs tracking-wide">Crowd avg</dt>
-          <dd className="text-paper text-lg">${crowdAvg.toLocaleString()}</dd>
+        <div className="text-right">
+          <dt className="eyebrow">Crowd avg</dt>
+          <dd className="text-lg font-semibold tabular-nums">${crowdAvg.toLocaleString()}</dd>
         </div>
       </dl>
 
       <button
         onClick={handleShare}
-        className="w-full rounded-md bg-brick-red text-paper font-medium py-3 px-6 hover:brightness-110 transition"
+        className="w-full rounded-full bg-ink text-paper font-semibold py-3.5 px-6 hover:bg-ink-soft transition"
       >
         Share result
       </button>
-      {shareStatus && <p className="text-xs text-paper-dim">{shareStatus}</p>}
+      {shareStatus && <p className="text-xs text-muted text-center">{shareStatus}</p>}
 
-      <div className="flex gap-4 text-sm font-mono text-paper-dim underline">
-        <a href="/leaderboard">Leaderboard</a>
-        <a href="/history">History</a>
+      <div className="flex justify-center gap-6 text-sm font-medium text-muted">
+        <Link href="/leaderboard" className="hover:text-ink transition">Leaderboard</Link>
+        <Link href="/history" className="hover:text-ink transition">History</Link>
       </div>
     </div>
   );

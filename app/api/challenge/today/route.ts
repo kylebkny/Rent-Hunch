@@ -23,7 +23,7 @@ export async function GET() {
 
   const { data: challenge, error: challengeError } = await admin
     .from("daily_challenges")
-    .select("id, edition, challenge_date, listings(neighborhood, city, beds, baths, sqft, amenities, transit)")
+    .select("id, edition, challenge_date, listings(neighborhood, city, beds, baths, sqft, amenities, transit, nearby)")
     .eq("challenge_date", challengeDate)
     .maybeSingle();
 
@@ -68,9 +68,10 @@ export async function GET() {
       city: listing.city,
       beds: listing.beds,
       baths: listing.baths,
-      sqft: listing.sqft,
+      sqft: listing.sqft ?? null,
       amenities: listing.amenities ?? [],
       transit: listing.transit,
+      nearby: listing.nearby ?? null,
     },
     guess: existingGuess
       ? {

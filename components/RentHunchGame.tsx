@@ -115,25 +115,28 @@ export function RentHunchGame() {
   }
 
   if (status === "loading") {
-    return <p className="text-center font-mono text-paper-dim">Pulling the file…</p>;
+    return <p className="text-center text-faint">Pulling the file…</p>;
   }
 
   if (status === "error") {
-    return <p className="text-center font-mono text-brick-red">{errorMessage}</p>;
+    return (
+      <div className="w-full max-w-md mx-auto rounded-3xl bg-paper text-ink p-8 text-center shadow-2xl shadow-black/40">
+        <p className="text-muted">{errorMessage}</p>
+      </div>
+    );
   }
 
   if (status === "played-elsewhere" && today?.guess) {
     return (
-      <div className="text-center flex flex-col gap-3">
-        <p className="font-mono text-paper-dim">
-          You already played Rent Hunch #{today.edition} today.
-        </p>
-        <p className="font-display text-2xl">{today.guess.score}/1000 pts</p>
-        <p className="font-mono text-sm text-paper-dim">
+      <div className="w-full max-w-md mx-auto rounded-3xl bg-paper text-ink p-8 text-center flex flex-col gap-3 shadow-2xl shadow-black/40">
+        <p className="eyebrow">Rent Hunch #{today.edition}</p>
+        <p className="text-muted">You already played today.</p>
+        <p className="text-3xl font-bold tabular-nums">{today.guess.score}/1000 pts</p>
+        <p className="text-sm text-muted tabular-nums">
           Your guess: ${today.guess.guess_amount.toLocaleString()}
         </p>
-        <p className="font-mono text-xs text-paper-dim/70">
-          (Reveal details are only available on the device you played from.)
+        <p className="text-xs text-faint">
+          Reveal details are only available on the device you played from.
         </p>
       </div>
     );

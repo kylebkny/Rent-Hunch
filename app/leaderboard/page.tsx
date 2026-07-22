@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -47,32 +48,27 @@ export default async function LeaderboardPage() {
     .limit(20);
 
   return (
-    <main className="flex flex-1 flex-col items-center px-4 py-12 gap-10 max-w-lg mx-auto w-full">
+    <main className="flex flex-1 flex-col items-center px-4 py-12 gap-8 max-w-lg mx-auto w-full">
       <header className="text-center">
-        <h1 className="font-display text-3xl font-semibold">Leaderboard</h1>
-        {challenge && (
-          <p className="font-mono text-xs text-paper-dim uppercase tracking-[0.2em] mt-1">
-            Rent Hunch #{challenge.edition}
-          </p>
-        )}
+        <p className="eyebrow">{challenge ? `Rent Hunch #${challenge.edition}` : "Leaderboard"}</p>
+        <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-paper">Leaderboard</h1>
+        <Link href="/" className="mt-2 inline-block text-sm text-faint hover:text-paper transition">← Back to today</Link>
       </header>
 
-      <section className="w-full">
-        <h2 className="font-mono text-xs uppercase tracking-[0.2em] text-brick-red mb-3">
-          Today
-        </h2>
+      <section className="w-full rounded-3xl bg-paper text-ink p-6 shadow-2xl shadow-black/40">
+        <h2 className="eyebrow mb-4">Today</h2>
         {dailyRows.length === 0 ? (
-          <p className="font-mono text-sm text-paper-dim">No guesses locked in yet today.</p>
+          <p className="text-sm text-muted">No guesses locked in yet today.</p>
         ) : (
-          <ol className="flex flex-col gap-2 font-mono text-sm">
+          <ol className="flex flex-col divide-y divide-line text-sm">
             {dailyRows.map((row, i) => {
               const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
               return (
-                <li key={i} className="flex justify-between border-b border-paper-dim/20 pb-1.5">
-                  <span className="text-paper-dim">
-                    {i + 1}. {profile?.display_name ?? "Anonymous"}
+                <li key={i} className="flex justify-between py-2.5">
+                  <span className="text-muted">
+                    <span className="tabular-nums">{i + 1}.</span> {profile?.display_name ?? "Anonymous"}
                   </span>
-                  <span>{row.score} pts</span>
+                  <span className="font-semibold tabular-nums">{row.score} pts</span>
                 </li>
               );
             })}
@@ -80,23 +76,21 @@ export default async function LeaderboardPage() {
         )}
       </section>
 
-      <section className="w-full">
-        <h2 className="font-mono text-xs uppercase tracking-[0.2em] text-brick-red mb-3">
-          All-time
-        </h2>
+      <section className="w-full rounded-3xl bg-paper text-ink p-6 shadow-2xl shadow-black/40">
+        <h2 className="eyebrow mb-4">All-time</h2>
         {!allTimeRows || allTimeRows.length === 0 ? (
-          <p className="font-mono text-sm text-paper-dim">No players yet.</p>
+          <p className="text-sm text-muted">No players yet.</p>
         ) : (
-          <ol className="flex flex-col gap-2 font-mono text-sm">
+          <ol className="flex flex-col divide-y divide-line text-sm">
             {(allTimeRows as AllTimeRow[]).map((row, i) => (
-              <li key={row.user_id} className="flex justify-between border-b border-paper-dim/20 pb-1.5">
-                <span className="text-paper-dim">
-                  {i + 1}. {row.display_name ?? "Anonymous"}
+              <li key={row.user_id} className="flex justify-between py-2.5">
+                <span className="text-muted">
+                  <span className="tabular-nums">{i + 1}.</span> {row.display_name ?? "Anonymous"}
                   {row.streak_count > 0 && (
-                    <span className="text-ledger-green"> · {row.streak_count}🔥</span>
+                    <span className="text-success"> · {row.streak_count}🔥</span>
                   )}
                 </span>
-                <span>{row.total_score} pts</span>
+                <span className="font-semibold tabular-nums">{row.total_score} pts</span>
               </li>
             ))}
           </ol>
