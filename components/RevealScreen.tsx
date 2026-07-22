@@ -34,7 +34,7 @@ export function RevealScreen({
   today: TodayChallengeResponse;
   reveal: GuessFinalResponse;
 }) {
-  const { edition, score, actual_rent, crowd_avg, best_guess, guesses, percentile, streak } = reveal;
+  const { edition, score, actual_rent, crowd_avg, best_guess, guesses, percentile, streak, listing_url } = reveal;
 
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(nextEtMidnightCountdown);
@@ -126,6 +126,17 @@ export function RevealScreen({
         <Stat label="Crowd avg" value={`$${crowd_avg.toLocaleString()}`} />
       </dl>
 
+      {listing_url && (
+        <a
+          href={listing_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-center text-sm font-medium text-ink underline decoration-line hover:decoration-ink"
+        >
+          See the original listing ↗
+        </a>
+      )}
+
       <button
         onClick={handleShare}
         className="w-full rounded-full bg-ink text-paper font-semibold py-3.5 px-6 hover:bg-ink-soft transition"
@@ -133,6 +144,8 @@ export function RevealScreen({
         Share result
       </button>
       {shareStatus && <p className="text-xs text-muted text-center">{shareStatus}</p>}
+
+      <NameEditor initial={reveal.display_name} />
 
       <p className="text-center text-sm text-muted">
         Next listing in <span className="font-semibold text-ink tabular-nums">{countdown}</span>
@@ -159,5 +172,62 @@ function Stat({ label, value }: { label: string; value: string }) {
       <dt className="eyebrow">{label}</dt>
       <dd className="text-lg font-semibold tabular-nums">{value}</dd>
     </div>
+  );
+}
+
+/** Lets the (anonymous) player set the name shown on the leaderboard — no
+ *  login required. */
+function NameEditor({ initial }: { initial: string | null }) {
+  const [name, setName] = useState(initial ?? "");
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(initial ?? "");
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    const trimmed = draft.trim();
+    if (!trimmed) return;
+    setSaving(true);
+    const res = await fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ display_name: trimmed }),
+    });
+    setSaving(false);
+    if (res.ok) {
+      const data = await res.json();
+      setName(data.display_name);
+      setEditing(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <div className="flex gap-2">
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          maxLength={20}
+          placeholder="Your name"
+          autoFocus
+          className="flex-1 rounded-full border border-line px-4 py-2 text-sm focus:outline-none focus:border-ink"
+        />
+        <button
+          onClick={save}
+          disabled={saving}
+          className="rounded-full bg-ink text-paper px-4 text-sm font-medium disabled:opacity-50"
+        >
+          {saving ? "…" : "Save"}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <p className="text-center text-xs text-muted">
+      {name ? <>Playing as <span className="font-medium text-ink">{name}</span> · </> : "Leaderboard shows Anonymous · "}
+      <button onClick={() => setEditing(true)} className="underline hover:text-ink">
+        {name ? "change name" : "add a name"}
+      </button>
+    </p>
   );
 }

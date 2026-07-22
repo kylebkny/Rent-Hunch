@@ -21,6 +21,7 @@ interface Result {
   actual_rent: number;
   best_guess: number;
   guesses: GuessAttempt[];
+  listing_url: string | null;
 }
 
 type Status = "loading" | "error" | "playing" | "revealed";
@@ -74,6 +75,7 @@ export function FreePlay() {
           actual_rent: data.actual_rent,
           best_guess: data.best_guess,
           guesses: nextAttempts,
+          listing_url: data.listing_url ?? null,
         });
         setStatus("revealed");
       }
@@ -117,7 +119,7 @@ export function FreePlay() {
 }
 
 function FreeplayReveal({ result, onAnother }: { result: Result; onAnother: () => void }) {
-  const { score, actual_rent, best_guess, guesses } = result;
+  const { score, actual_rent, best_guess, guesses, listing_url } = result;
   const displayScore = useCountUp(score, 900);
   const displayRent = useCountUp(actual_rent, 1000);
   const bands = guesses.map((g) => g.band);
@@ -168,6 +170,17 @@ function FreeplayReveal({ result, onAnother }: { result: Result; onAnother: () =
           </div>
         ))}
       </div>
+
+      {listing_url && (
+        <a
+          href={listing_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-center text-sm font-medium text-ink underline decoration-line hover:decoration-ink"
+        >
+          See the original listing ↗
+        </a>
+      )}
 
       <button
         onClick={onAnother}

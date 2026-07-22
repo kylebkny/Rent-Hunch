@@ -38,7 +38,7 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   const { data: listing } = await admin
     .from("listings")
-    .select("actual_rent, is_off_market, review_status")
+    .select("actual_rent, is_off_market, review_status, listing_url, exr_listing_url")
     .eq("id", listing_id)
     .maybeSingle();
 
@@ -71,5 +71,6 @@ export async function POST(request: Request) {
     actual_rent: actualRent,
     best_guess: bestGuess,
     guesses_used: attempt,
+    listing_url: listing.listing_url ?? listing.exr_listing_url ?? null,
   });
 }

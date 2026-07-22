@@ -62,6 +62,8 @@ export interface GuessFinalResponse {
   guesses: GuessAttempt[];
   percentile: number;
   streak: number;
+  display_name: string | null;
+  listing_url: string | null;
 }
 
 export type GuessResponse = GuessHintResponse | GuessFinalResponse;

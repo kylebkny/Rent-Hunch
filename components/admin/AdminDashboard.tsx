@@ -22,6 +22,7 @@ interface Listing {
   nearby: string | null;
   actual_rent: number;
   photos: string[];
+  listing_url: string | null;
   source: "manual" | "exr";
   review_status: "draft" | "ready";
   status: "active" | "used";
@@ -39,6 +40,7 @@ const EMPTY_FORM = {
   transit: "",
   nearby: "",
   actual_rent: "",
+  listing_url: "",
 };
 
 export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
@@ -120,6 +122,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
       transit: l.transit,
       nearby: l.nearby ?? "",
       actual_rent: String(l.actual_rent),
+      listing_url: l.listing_url ?? "",
     });
     setAmenities(l.amenities ?? []);
     setPhotos(l.photos ?? []);
@@ -160,6 +163,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
       nearby: form.nearby,
       actual_rent: Number(form.actual_rent),
       photos,
+      listing_url: form.listing_url,
     };
     const res = editingId
       ? await fetch(`/api/admin/listings/${editingId}`, {
@@ -276,6 +280,10 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
             <input value={form.nearby} onChange={(e) => setField("nearby", e.target.value)} placeholder="McCarren Park, …" className={inputClass} />
           </Field>
         </div>
+
+        <Field label="Listing link (optional — shown on the reveal)">
+          <input value={form.listing_url} onChange={(e) => setField("listing_url", e.target.value)} placeholder="https://…" className={inputClass} />
+        </Field>
 
         <div className="flex flex-col gap-2">
           <span className="eyebrow">Amenities</span>

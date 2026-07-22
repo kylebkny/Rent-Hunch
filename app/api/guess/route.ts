@@ -51,7 +51,7 @@ export async function POST(request: Request) {
 
   const { data: challenge, error: challengeError } = await admin
     .from("daily_challenges")
-    .select("id, edition, challenge_date, listings(actual_rent)")
+    .select("id, edition, challenge_date, listings(actual_rent, listing_url, exr_listing_url)")
     .eq("id", challenge_id)
     .maybeSingle();
   if (challengeError || !challenge) {
@@ -62,6 +62,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Challenge is missing its listing" }, { status: 500 });
   }
   const actualRent = listing.actual_rent;
+  const listingUrl = listing.listing_url ?? listing.exr_listing_url ?? null;
 
   // In-progress guesses so far.
   const { data: state } = await admin
@@ -112,7 +113,12 @@ export async function POST(request: Request) {
     { onConflict: "user_id,challenge_id" }
   );
 
-  const newStreak = await updateStreakAndScore(admin, user.id, challenge.challenge_date, score);
+  const { streak: newStreak, displayName } = await updateStreakAndScore(
+    admin,
+    user.id,
+    challenge.challenge_date,
+    score
+  );
 
   const { data: allRows } = await admin
     .from("guesses")
@@ -136,6 +142,8 @@ export async function POST(request: Request) {
     guesses,
     percentile,
     streak: newStreak,
+    display_name: displayName,
+    listing_url: listingUrl,
   };
   return NextResponse.json(res);
 }
@@ -145,10 +153,10 @@ async function updateStreakAndScore(
   userId: string,
   challengeDate: string,
   score: number
-): Promise<number> {
+): Promise<{ streak: number; displayName: string | null }> {
   const { data: profile } = await admin
     .from("profiles")
-    .select("streak_count, longest_streak, total_score")
+    .select("streak_count, longest_streak, total_score, display_name")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -176,7 +184,7 @@ async function updateStreakAndScore(
     { user_id: userId, streak_count: newStreak, longest_streak: newLongest, total_score: newTotal },
     { onConflict: "user_id" }
   );
-  return newStreak;
+  return { streak: newStreak, displayName: profile?.display_name ?? null };
 }
 
 function isNextCalendarDay(prevDate: string, currentDate: string): boolean {

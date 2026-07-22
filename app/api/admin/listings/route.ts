@@ -13,6 +13,7 @@ interface ListingBody {
   nearby?: string | null;
   actual_rent?: number;
   photos?: string[];
+  listing_url?: string | null;
   review_status?: "draft" | "ready";
 }
 
@@ -68,6 +69,7 @@ export async function POST(request: Request) {
       nearby: body.nearby?.trim() || null,
       actual_rent: body.actual_rent,
       photos: body.photos ?? [],
+      listing_url: body.listing_url?.trim() || null,
       source: "manual",
       review_status: body.review_status ?? "ready",
       status: "active",
