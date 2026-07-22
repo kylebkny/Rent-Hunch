@@ -5,19 +5,26 @@ import { createClient } from "@/lib/supabase/browser";
 import { GameCard } from "@/components/GameCard";
 import { RevealScreen } from "@/components/RevealScreen";
 import { SITE_NAME } from "@/lib/brand";
-import type { GuessResponse, TodayChallengeResponse } from "@/lib/types";
+import type {
+  GuessAttempt,
+  GuessFinalResponse,
+  GuessResponse,
+  TodayChallengeResponse,
+} from "@/lib/types";
 
-type CachedReveal = GuessResponse & { guess_amount: number };
+type CachedReveal = GuessFinalResponse;
 
 function revealCacheKey(challengeId: string) {
-  return `rent-hunch-reveal-${challengeId}`;
+  return `wtr-reveal-${challengeId}`;
 }
 
-type Status = "loading" | "error" | "playing" | "revealed" | "played-elsewhere";
+type Status = "loading" | "error" | "empty" | "playing" | "revealed" | "played-elsewhere";
 
 export function RentHunchGame() {
   const [status, setStatus] = useState<Status>("loading");
   const [today, setToday] = useState<TodayChallengeResponse | null>(null);
+  const [attempts, setAttempts] = useState<GuessAttempt[]>([]);
+  const [round, setRound] = useState(0);
   const [reveal, setReveal] = useState<CachedReveal | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -27,25 +34,24 @@ export function RentHunchGame() {
 
     async function init() {
       const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         const { error } = await supabase.auth.signInAnonymously();
-        if (error) {
-          if (!cancelled) {
-            setErrorMessage("Couldn't start a session. Please refresh.");
-            setStatus("error");
-          }
+        if (error && !cancelled) {
+          setErrorMessage("Couldn't start a session. Please refresh.");
+          setStatus("error");
           return;
         }
       }
 
       const res = await fetch("/api/challenge/today");
+      if (res.status === 404) {
+        if (!cancelled) setStatus("empty");
+        return;
+      }
       if (!res.ok) {
         if (!cancelled) {
-          setErrorMessage("No challenge is available today. Check back soon.");
+          setErrorMessage("Something went wrong loading today's game.");
           setStatus("error");
         }
         return;
@@ -66,50 +72,45 @@ export function RentHunchGame() {
         return;
       }
 
-      if (!data.game_state) {
+      if (data.game_state) {
+        setAttempts(data.game_state.guesses ?? []);
+        setRound(data.game_state.current_round ?? 0);
+      } else {
         await fetch("/api/state", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ challenge_id: data.challenge_id, current_round: 0 }),
         });
       }
-
       setStatus("playing");
     }
 
     init();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
-  async function handleAdvanceRound(round: number) {
-    if (!today) return;
-    await fetch("/api/state", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ challenge_id: today.challenge_id, current_round: round }),
-    });
-  }
-
-  async function handleLockGuess(guessAmount: number) {
+  async function handleSubmit(amount: number, final: boolean) {
     if (!today) return;
     setSubmitting(true);
     try {
       const res = await fetch("/api/guess", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ challenge_id: today.challenge_id, guess_amount: guessAmount }),
+        body: JSON.stringify({ challenge_id: today.challenge_id, guess_amount: amount, final }),
       });
       if (!res.ok) {
-        setErrorMessage("Couldn't lock your guess. Please try again.");
+        setErrorMessage("Couldn't submit your guess. Please try again.");
         return;
       }
       const data: GuessResponse = await res.json();
-      const cachedReveal: CachedReveal = { ...data, guess_amount: guessAmount };
-      writeCachedReveal(today.challenge_id, cachedReveal);
-      setReveal(cachedReveal);
-      setStatus("revealed");
+      if (data.final) {
+        writeCachedReveal(today.challenge_id, data);
+        setReveal(data);
+        setStatus("revealed");
+      } else {
+        setAttempts(data.guesses);
+        setRound(data.round);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -127,34 +128,31 @@ export function RentHunchGame() {
     );
   }
 
+  if (status === "empty") {
+    return (
+      <div className="w-full max-w-md mx-auto rounded-3xl bg-paper text-ink p-8 text-center flex flex-col gap-3 shadow-2xl shadow-black/40">
+        <p className="text-4xl">🏠</p>
+        <p className="font-semibold text-lg">No listing today — yet.</p>
+        <p className="text-sm text-muted">
+          A fresh Brooklyn rental drops every morning. Check back soon and see how close your hunch gets.
+        </p>
+      </div>
+    );
+  }
+
   if (status === "played-elsewhere" && today?.guess) {
     return (
       <div className="w-full max-w-md mx-auto rounded-3xl bg-paper text-ink p-8 text-center flex flex-col gap-3 shadow-2xl shadow-black/40">
         <p className="eyebrow">{SITE_NAME} #{today.edition}</p>
         <p className="text-muted">You already played today.</p>
         <p className="text-3xl font-bold tabular-nums">{today.guess.score}/1000 pts</p>
-        <p className="text-sm text-muted tabular-nums">
-          Your guess: ${today.guess.guess_amount.toLocaleString()}
-        </p>
-        <p className="text-xs text-faint">
-          Reveal details are only available on the device you played from.
-        </p>
+        <p className="text-xs text-faint">Full results are on the device you played from.</p>
       </div>
     );
   }
 
   if (status === "revealed" && today && reveal) {
-    return (
-      <RevealScreen
-        edition={reveal.edition}
-        round={reveal.round}
-        guessAmount={reveal.guess_amount}
-        score={reveal.score}
-        actualRent={reveal.actual_rent}
-        crowdAvg={reveal.crowd_avg}
-        photos={today.photos}
-      />
-    );
+    return <RevealScreen today={today} reveal={reveal} />;
   }
 
   if (status === "playing" && today) {
@@ -162,9 +160,9 @@ export function RentHunchGame() {
       <GameCard
         clues={today.clues}
         photos={today.photos}
-        initialRound={today.game_state?.current_round ?? 0}
-        onAdvanceRound={handleAdvanceRound}
-        onLockGuess={handleLockGuess}
+        round={round}
+        attempts={attempts}
+        onSubmit={handleSubmit}
         submitting={submitting}
       />
     );
@@ -186,6 +184,6 @@ function writeCachedReveal(challengeId: string, data: CachedReveal) {
   try {
     localStorage.setItem(revealCacheKey(challengeId), JSON.stringify(data));
   } catch {
-    // Storage unavailable (private mode, quota) — reveal just won't persist across reloads.
+    // Storage unavailable — reveal just won't persist across reloads.
   }
 }

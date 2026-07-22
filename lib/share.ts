@@ -1,15 +1,15 @@
-import { MAX_POSSIBLE_SCORE, roundTrailEmoji } from "@/lib/scoring";
+import { MAX_POSSIBLE_SCORE, guessTrailEmoji, type WarmthBand } from "@/lib/scoring";
 import { SITE_NAME } from "@/lib/brand";
 
 export interface ShareData {
   edition: number;
-  round: number;
   score: number;
   actualRent: number;
+  bands: WarmthBand[];
 }
 
-export function buildShareText({ edition, round, score }: ShareData): string {
-  const trail = roundTrailEmoji(round);
+export function buildShareText({ edition, score, bands }: ShareData): string {
+  const trail = guessTrailEmoji(bands);
   return `${SITE_NAME} #${edition} — ${trail} — ${score}/${MAX_POSSIBLE_SCORE} pts`;
 }
 
@@ -53,7 +53,7 @@ export async function renderResultCard(data: ShareData): Promise<Blob | null> {
   ctx.fillText(`${data.score} / ${MAX_POSSIBLE_SCORE} pts`, canvas.width / 2, 720);
 
   ctx.font = "64px sans-serif";
-  ctx.fillText(roundTrailEmoji(data.round), canvas.width / 2, 830);
+  ctx.fillText(guessTrailEmoji(data.bands), canvas.width / 2, 830);
 
   ctx.fillStyle = "#6b7280";
   ctx.font = `500 30px ${sans}`;

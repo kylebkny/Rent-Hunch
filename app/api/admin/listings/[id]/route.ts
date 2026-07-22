@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { rehostExternalPhotos } from "@/lib/exr/rehost";
 
 interface PatchBody {
   neighborhood?: string;
@@ -50,6 +51,18 @@ export async function PATCH(
   }
 
   const admin = createAdminClient();
+
+  // When a listing is marked ready to feature, re-host any external (e.g.
+  // scraped EXR CDN) photos into our own Storage so they can't break later.
+  if (update.review_status === "ready") {
+    let photos = Array.isArray(update.photos) ? (update.photos as string[]) : null;
+    if (!photos) {
+      const { data } = await admin.from("listings").select("photos").eq("id", id).maybeSingle();
+      photos = Array.isArray(data?.photos) ? (data!.photos as string[]) : [];
+    }
+    update.photos = await rehostExternalPhotos(admin, photos);
+  }
+
   const { error } = await admin.from("listings").update(update).eq("id", id);
   if (error) {
     return NextResponse.json({ error: "Could not update listing" }, { status: 500 });

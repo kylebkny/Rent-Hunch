@@ -54,7 +54,7 @@ export async function GET() {
 
   const { data: state } = await admin
     .from("game_state")
-    .select("current_round")
+    .select("current_round, guesses")
     .eq("user_id", user.id)
     .eq("challenge_id", challenge.id)
     .maybeSingle();
@@ -81,7 +81,12 @@ export async function GET() {
           score: existingGuess.score,
         }
       : null,
-    game_state: state ? { current_round: state.current_round } : null,
+    game_state: state
+      ? {
+          current_round: state.current_round,
+          guesses: Array.isArray(state.guesses) ? state.guesses : [],
+        }
+      : null,
   };
 
   return NextResponse.json(body);

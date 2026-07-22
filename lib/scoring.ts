@@ -1,38 +1,77 @@
 /**
  * Scoring is driven primarily by how close the guess is to the actual rent.
- * The round you lock on is only a small edge — locking earlier (on fewer
- * clues) earns a modest bonus, but accuracy dominates. A dead-on guess on
- * the final round still scores far higher than a wild guess on the first.
+ * Players make up to MAX_GUESSES guesses (one per clue round); the score
+ * uses their BEST (closest) guess, with a gentle bonus for finishing in
+ * fewer guesses. Accuracy dominates; guess count is only a small edge.
  */
 export const MAX_POSSIBLE_SCORE = 1000;
+export const MAX_GUESSES = 4;
 
 // A guess this far off (as a fraction of actual rent) earns 0 points.
 const ZERO_SCORE_ERROR_FRACTION = 0.5;
 
-// Gentle per-round multiplier. Round 0 is full value; later rounds shave a
-// little off, so the max ranges only ~1000→900 across rounds (vs. accuracy,
-// which swings the full 0→1000).
-const ROUND_MULTIPLIER = [1.0, 0.97, 0.94, 0.9] as const;
+// Gentle multiplier by guesses used (index = guessesUsed - 1). Solving in
+// one guess is full value; using all four shaves ~10%.
+const GUESS_MULTIPLIER = [1.0, 0.97, 0.94, 0.9] as const;
 
-function roundMultiplier(round: number): number {
-  return ROUND_MULTIPLIER[round] ?? ROUND_MULTIPLIER[ROUND_MULTIPLIER.length - 1];
+function guessMultiplier(guessesUsed: number): number {
+  const i = Math.max(0, guessesUsed - 1);
+  return GUESS_MULTIPLIER[i] ?? GUESS_MULTIPLIER[GUESS_MULTIPLIER.length - 1];
 }
 
-/** Max score attainable on a given round (a perfect guess). */
-export function roundMaxScore(round: number): number {
-  return Math.round(MAX_POSSIBLE_SCORE * roundMultiplier(round));
+/** Max score attainable when finishing in `guessesUsed` guesses (perfect). */
+export function maxScoreForGuesses(guessesUsed: number): number {
+  return Math.round(MAX_POSSIBLE_SCORE * guessMultiplier(guessesUsed));
 }
 
-/** Accuracy component alone, 0..1, from how close the guess is. */
 export function accuracyFraction(guessAmount: number, actualRent: number): number {
   const errorFraction = Math.abs(guessAmount - actualRent) / actualRent;
   return Math.max(0, 1 - errorFraction / ZERO_SCORE_ERROR_FRACTION);
 }
 
-export function computeScore(round: number, guessAmount: number, actualRent: number): number {
-  return Math.round(MAX_POSSIBLE_SCORE * accuracyFraction(guessAmount, actualRent) * roundMultiplier(round));
+/** Score for a finished game: best guess accuracy × guesses-used bonus. */
+export function computeScore(bestGuess: number, actualRent: number, guessesUsed: number): number {
+  return Math.round(MAX_POSSIBLE_SCORE * accuracyFraction(bestGuess, actualRent) * guessMultiplier(guessesUsed));
 }
 
-export function roundTrailEmoji(lockedRound: number): string {
-  return "🟥".repeat(Math.max(0, lockedRound)) + "🟩";
+// ─── hints ────────────────────────────────────────────────────────────────
+
+export type HintDirection = "high" | "low" | "exact";
+export type WarmthBand = "exact" | "veryClose" | "close" | "warm" | "cold";
+
+export interface GuessHint {
+  direction: HintDirection;
+  band: WarmthBand;
+}
+
+export function hintFor(guess: number, actual: number): GuessHint {
+  const err = Math.abs(guess - actual) / actual;
+  const direction: HintDirection = guess === actual ? "exact" : guess > actual ? "high" : "low";
+  const band: WarmthBand =
+    err === 0 ? "exact" : err <= 0.05 ? "veryClose" : err <= 0.12 ? "close" : err <= 0.25 ? "warm" : "cold";
+  return { direction, band };
+}
+
+export const DIRECTION_LABEL: Record<HintDirection, string> = {
+  high: "Too high",
+  low: "Too low",
+  exact: "Exact",
+};
+
+export const BAND_LABEL: Record<WarmthBand, string> = {
+  exact: "Spot on",
+  veryClose: "Very warm",
+  close: "Warm",
+  warm: "Lukewarm",
+  cold: "Cold",
+};
+
+export function bandEmoji(band: WarmthBand): string {
+  if (band === "exact" || band === "veryClose") return "🟩";
+  if (band === "close" || band === "warm") return "🟨";
+  return "🟥";
+}
+
+export function guessTrailEmoji(bands: WarmthBand[]): string {
+  return bands.map(bandEmoji).join("");
 }
