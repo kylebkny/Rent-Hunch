@@ -138,6 +138,13 @@ export function RevealScreen({
         Next listing in <span className="font-semibold text-ink tabular-nums">{countdown}</span>
       </p>
 
+      <Link
+        href="/play"
+        className="w-full rounded-full border border-line text-ink font-semibold py-3 text-center hover:border-ink transition"
+      >
+        Keep playing — free play →
+      </Link>
+
       <div className="flex justify-center gap-6 text-sm font-medium text-muted">
         <Link href="/leaderboard" className="hover:text-ink transition">Leaderboard</Link>
         <Link href="/history" className="hover:text-ink transition">History</Link>

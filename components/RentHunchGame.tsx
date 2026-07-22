@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/browser";
 import { GameCard } from "@/components/GameCard";
 import { RevealScreen } from "@/components/RevealScreen";
@@ -134,8 +135,14 @@ export function RentHunchGame() {
         <p className="text-4xl">🏠</p>
         <p className="font-semibold text-lg">No listing today — yet.</p>
         <p className="text-sm text-muted">
-          A fresh Brooklyn rental drops every morning. Check back soon and see how close your hunch gets.
+          A fresh Brooklyn rental drops every morning. In the meantime, try a random one.
         </p>
+        <Link
+          href="/play"
+          className="mt-1 rounded-full bg-ink text-paper font-semibold py-3 px-6 hover:bg-ink-soft transition"
+        >
+          Play a random listing →
+        </Link>
       </div>
     );
   }
