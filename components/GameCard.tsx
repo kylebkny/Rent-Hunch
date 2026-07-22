@@ -13,6 +13,7 @@ import {
 } from "@/lib/scoring";
 import { sfx } from "@/lib/sound";
 import { buzz } from "@/lib/haptics";
+import { describeNeighborhood } from "@/lib/neighborhoods";
 import type { GuessAttempt, ListingClues } from "@/lib/types";
 
 const SLIDER_MIN = 1000;
@@ -78,7 +79,11 @@ export function GameCard({ clues, photos, round, attempts, onSubmit, submitting 
       <div>
         <p className="eyebrow mb-3">Filed details</p>
         <dl className="flex flex-col divide-y divide-line text-sm">
-          <ClueRow label="Neighborhood" value={`${clues.neighborhood}, ${clues.city}`} />
+          <ClueRow
+            label="Neighborhood"
+            value={`${clues.neighborhood}, ${clues.city}`}
+            sub={describeNeighborhood(clues.neighborhood)}
+          />
           {round >= 1 && (
             <ClueRow
               label="Layout"
@@ -178,11 +183,14 @@ export function GameCard({ clues, photos, round, attempts, onSubmit, submitting 
   );
 }
 
-function ClueRow({ label, value }: { label: string; value: string }) {
+function ClueRow({ label, value, sub }: { label: string; value: string; sub?: string | null }) {
   return (
     <div className="flex items-baseline justify-between gap-4 py-2.5">
       <dt className="eyebrow shrink-0">{label}</dt>
-      <dd className="text-right font-medium text-ink">{value}</dd>
+      <dd className="text-right">
+        <span className="font-medium text-ink">{value}</span>
+        {sub && <span className="block text-xs text-muted font-normal mt-0.5">{sub}</span>}
+      </dd>
     </div>
   );
 }

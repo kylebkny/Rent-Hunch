@@ -86,10 +86,10 @@ export function RevealScreen({
         </div>
       )}
 
-      <div className="relative h-36 flex items-center justify-center rounded-2xl bg-mist">
-        <div className="animate-stamp-in absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border-[3px] border-ink px-8 py-3 rotate-[-7deg]">
+      <div className="flex items-center justify-center overflow-hidden rounded-2xl bg-mist py-8">
+        <div className="animate-stamp-pop inline-block border-[3px] border-ink bg-paper px-7 py-3">
           <div className="eyebrow text-center !text-ink mb-0.5">Actual rent</div>
-          <div className="text-4xl font-bold tracking-tight text-center tabular-nums">
+          <div className="text-4xl font-bold tracking-tight text-center tabular-nums whitespace-nowrap">
             ${displayRent.toLocaleString()}
           </div>
         </div>

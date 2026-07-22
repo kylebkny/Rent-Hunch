@@ -1,7 +1,12 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, IBM_Plex_Mono } from "next/font/google";
 import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/brand";
 import "./globals.css";
+
+export const viewport: Viewport = {
+  viewportFit: "cover",
+  themeColor: "#000000",
+};
 
 const inter = Inter({
   variable: "--font-inter",

@@ -22,7 +22,7 @@ export function HowToPlay() {
       <button
         onClick={() => setOpen(true)}
         aria-label="How to play"
-        className="fixed top-4 left-4 z-40 h-10 w-10 rounded-full bg-paper/10 hover:bg-paper/20 text-paper font-semibold flex items-center justify-center transition"
+        className="fixed top-[calc(env(safe-area-inset-top)+0.75rem)] left-4 z-40 h-10 w-10 rounded-full bg-paper/10 hover:bg-paper/20 text-paper font-semibold flex items-center justify-center transition"
       >
         ?
       </button>
@@ -46,6 +46,12 @@ export function HowToPlay() {
               <Rule n="3">Your score is set by your <b>closest</b> guess. Nailing it early earns a small bonus, but getting close is what matters.</Rule>
               <Rule n="4">Come back every day to build your 🔥 <b>streak</b> and climb the leaderboard.</Rule>
             </ol>
+            <div className="rounded-xl bg-mist p-3 text-xs text-muted">
+              <b className="text-ink">New to NYC rents?</b> As a rough anchor, Brooklyn studios run
+              ~$2,500–3,500, 1-beds ~$3,000–4,500, and 2-beds ~$3,800–6,000 — trendier,
+              waterfront, and doorman buildings push higher. The neighborhood note under each
+              clue tells you how pricey the area tends to be.
+            </div>
             <button
               onClick={() => setOpen(false)}
               className="rounded-full bg-ink text-paper font-semibold py-3 hover:bg-ink-soft transition"

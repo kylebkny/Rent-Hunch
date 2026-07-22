@@ -5,12 +5,12 @@ import { SITE_NAME, SITE_TAGLINE } from "@/lib/brand";
 
 export default function Home() {
   return (
-    <main className="flex flex-1 flex-col items-center px-4 pt-14 pb-16 gap-10">
+    <main className="flex flex-1 flex-col items-center px-4 pt-16 pb-16 gap-10">
       <HowToPlay />
       <MuteToggle />
-      <header className="text-center">
+      <header className="text-center px-14">
         <p className="eyebrow">Daily Rent Game · Brooklyn</p>
-        <h1 className="mt-3 text-5xl sm:text-6xl font-extrabold tracking-tight text-paper">
+        <h1 className="mt-2 text-4xl sm:text-5xl font-extrabold tracking-tight text-paper">
           {SITE_NAME}
         </h1>
         <p className="mt-3 text-base text-faint max-w-sm mx-auto">{SITE_TAGLINE}</p>
