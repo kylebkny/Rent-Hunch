@@ -72,6 +72,13 @@ export function bandEmoji(band: WarmthBand): string {
   return "🟥";
 }
 
+/** Canvas colors matching the 🟩/🟨/🟥 trail, for the share image. */
+export function bandColor(band: WarmthBand): string {
+  if (band === "exact" || band === "veryClose") return "#16a34a";
+  if (band === "close" || band === "warm") return "#eab308";
+  return "#ef4444";
+}
+
 export function guessTrailEmoji(bands: WarmthBand[]): string {
   return bands.map(bandEmoji).join("");
 }

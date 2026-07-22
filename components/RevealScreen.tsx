@@ -59,7 +59,7 @@ export function RevealScreen({
 
   async function handleShare() {
     setShareStatus(null);
-    const result = await shareResult({ edition, score, actualRent: actual_rent, bands });
+    const result = await shareResult({ edition, score, bands, guessesUsed: reveal.guesses_used });
     if (result === "downloaded") setShareStatus("Saved image — share it from your photos.");
     if (result === "failed") setShareStatus("Couldn't share — try again.");
   }
