@@ -71,6 +71,10 @@ alter table listings add column if not exists review_status text not null defaul
 alter table listings add column if not exists exr_listing_url text;
 alter table listings add column if not exists is_off_market boolean not null default true;
 alter table game_state add column if not exists guesses jsonb not null default '[]'::jsonb;
+alter table listings add column if not exists listing_url text;
+alter table listings add column if not exists address text;
+alter table listings add column if not exists lat double precision;
+alter table listings add column if not exists lng double precision;
 
 -- Indexes --------------------------------------------------------------
 create index if not exists listings_status_idx on listings(status);
@@ -107,8 +111,16 @@ The Supabase integration already provides `SUPABASE_SERVICE_ROLE_KEY` and
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://dujfvhlqlslqqxfihaxa.supabase.co` | |
 | `ADMIN_EMAILS` | your admin email | comma-separated for multiple |
 | `CRON_SECRET` | a long random string | **no leading/trailing spaces** |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | *(optional)* Maps key | enables admin address autofill; see below |
 
 Apply to Production, Preview, and Development.
+
+**Optional — Google Maps admin autofill:** create a Google Cloud project,
+enable **Maps JavaScript API** and **Places API**, make a browser API key
+restricted by HTTP referrer (your Vercel domains), and set it as
+`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`. Then the admin form gets an address search
+that auto-fills neighborhood, borough, and nearest train (with walk time) and
+stores lat/lng. Without the key, admin entry stays fully manual.
 
 ## 4. Redeploy
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AddressAutocomplete, type ResolvedAddress } from "@/components/admin/AddressAutocomplete";
 import { deriveTransit } from "@/lib/transit";
 import {
   AMENITY_OPTIONS,
@@ -23,6 +24,9 @@ interface Listing {
   actual_rent: number;
   photos: string[];
   listing_url: string | null;
+  address: string | null;
+  lat: number | null;
+  lng: number | null;
   source: "manual" | "exr";
   review_status: "draft" | "ready";
   status: "active" | "used";
@@ -51,6 +55,11 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   const [amenities, setAmenities] = useState<string[]>([]);
   const [customAmenity, setCustomAmenity] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
+  const [geo, setGeo] = useState<{ address: string; lat: number | null; lng: number | null }>({
+    address: "",
+    lat: null,
+    lng: null,
+  });
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -109,6 +118,17 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     setAmenities([]);
     setPhotos([]);
     setCustomAmenity("");
+    setGeo({ address: "", lat: null, lng: null });
+  }
+
+  function handleResolved(r: ResolvedAddress) {
+    setForm((f) => ({
+      ...f,
+      neighborhood: r.neighborhood ?? f.neighborhood,
+      city: r.borough && BOROUGHS.includes(r.borough) ? r.borough : f.city,
+      transit: r.transit ?? f.transit,
+    }));
+    setGeo({ address: r.address, lat: r.lat, lng: r.lng });
   }
 
   function startEdit(l: Listing) {
@@ -126,6 +146,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     });
     setAmenities(l.amenities ?? []);
     setPhotos(l.photos ?? []);
+    setGeo({ address: l.address ?? "", lat: l.lat ?? null, lng: l.lng ?? null });
     setMessage(null);
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -164,6 +185,9 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
       actual_rent: Number(form.actual_rent),
       photos,
       listing_url: form.listing_url,
+      address: geo.address || null,
+      lat: geo.lat,
+      lng: geo.lng,
     };
     const res = editingId
       ? await fetch(`/api/admin/listings/${editingId}`, {
@@ -238,6 +262,14 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
             </button>
           )}
         </div>
+
+        <AddressAutocomplete onResolve={handleResolved} />
+        {geo.address && (
+          <p className="text-xs text-muted">
+            📍 {geo.address}
+            {geo.lat != null && geo.lng != null ? " · geocoded" : ""}
+          </p>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <Field label="Neighborhood" required>
