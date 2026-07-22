@@ -23,6 +23,25 @@ function audioCtx(): AudioContext | null {
   return ctx;
 }
 
+/**
+ * iOS/Safari start the AudioContext suspended and only allow it to resume
+ * inside a user gesture. Call this once on mount: it resumes (creating if
+ * needed) the context on the first pointer/touch/key interaction so later
+ * programmatic sounds (e.g. the reveal chime) can play.
+ */
+export function primeAudio(): void {
+  if (typeof window === "undefined") return;
+  const unlock = () => {
+    audioCtx();
+    window.removeEventListener("pointerdown", unlock);
+    window.removeEventListener("touchend", unlock);
+    window.removeEventListener("keydown", unlock);
+  };
+  window.addEventListener("pointerdown", unlock);
+  window.addEventListener("touchend", unlock);
+  window.addEventListener("keydown", unlock);
+}
+
 export function isMuted(): boolean {
   return muted;
 }
@@ -81,4 +100,6 @@ export const sfx = {
     tone(330, 0.22, { type: "sine", gain: 0.05 });
     tone(247, 0.3, { type: "sine", gain: 0.05, delay: 0.1 });
   },
+  /** Confirmation blip used to test that audio is working. */
+  blip: () => tone(660, 0.14, { type: "sine", gain: 0.06 }),
 };

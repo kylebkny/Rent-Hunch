@@ -1,15 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { isMuted, setMuted } from "@/lib/sound";
+import { isMuted, setMuted, primeAudio, sfx } from "@/lib/sound";
 
 export function MuteToggle() {
   const [muted, setMutedState] = useState(false);
 
   useEffect(() => {
-    // Read the stored preference after hydration to avoid a server/client
-    // mismatch (localStorage isn't available during SSR).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    primeAudio();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- read stored pref after hydration
     setMutedState(isMuted());
   }, []);
 
@@ -17,6 +16,8 @@ export function MuteToggle() {
     const next = !muted;
     setMuted(next);
     setMutedState(next);
+    // Play a confirmation blip when turning sound ON (also unlocks iOS audio).
+    if (!next) sfx.blip();
   }
 
   return (
