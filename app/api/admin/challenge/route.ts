@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  let body: { listing_id?: string };
+  let body: { listing_id?: string; replace?: boolean };
   try {
     body = await request.json();
   } catch {
@@ -46,14 +46,25 @@ export async function POST(request: Request) {
 
   const { data: existing } = await admin
     .from("daily_challenges")
-    .select("id")
+    .select("id, listing_id")
     .eq("challenge_date", challengeDate)
     .maybeSingle();
+
   if (existing) {
-    return NextResponse.json(
-      { error: "Today already has a challenge" },
-      { status: 409 }
-    );
+    if (!body.replace) {
+      return NextResponse.json(
+        { error: "Today already has a challenge", replaceable: true },
+        { status: 409 }
+      );
+    }
+    // Replace today's challenge: clear its plays, drop the row, and return
+    // the previously-featured listing to the pool.
+    await admin.from("guesses").delete().eq("challenge_id", existing.id);
+    await admin.from("game_state").delete().eq("challenge_id", existing.id);
+    await admin.from("daily_challenges").delete().eq("id", existing.id);
+    if (existing.listing_id && existing.listing_id !== body.listing_id) {
+      await admin.from("listings").update({ status: "active" }).eq("id", existing.listing_id);
+    }
   }
 
   const { data: challenge, error } = await admin

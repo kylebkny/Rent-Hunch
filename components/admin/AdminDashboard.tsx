@@ -231,15 +231,26 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     else setMessage((await res.json()).error ?? "Update failed.");
   }
 
-  async function setAsToday(id: string) {
+  async function setAsToday(id: string, replace = false) {
     const res = await fetch("/api/admin/challenge", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ listing_id: id }),
+      body: JSON.stringify({ listing_id: id, replace }),
     });
     const data = await res.json();
-    setMessage(res.ok ? `Now live as #${data.edition}.` : data.error ?? "Failed.");
-    if (res.ok) load();
+    if (res.ok) {
+      setMessage(`Now live as #${data.edition}.`);
+      load();
+      return;
+    }
+    // Today already has a challenge — offer to replace it.
+    if (res.status === 409 && data.replaceable) {
+      if (window.confirm("Today already has a challenge. Replace it? This clears today's plays for the current one.")) {
+        setAsToday(id, true);
+      }
+      return;
+    }
+    setMessage(data.error ?? "Failed.");
   }
 
   async function remove(id: string) {
@@ -482,8 +493,10 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
             </div>
             <div className="flex flex-col gap-1.5 shrink-0 text-xs">
               <button onClick={() => startEdit(l)} className="rounded-full border border-line px-3 py-1.5 font-medium">Edit</button>
-              {l.status === "active" && l.is_off_market && (
-                <button onClick={() => setAsToday(l.id)} className="rounded-full bg-ink text-paper px-3 py-1.5 font-medium">Set as today</button>
+              {l.is_off_market && (
+                <button onClick={() => setAsToday(l.id)} className="rounded-full bg-ink text-paper px-3 py-1.5 font-medium">
+                  {schedule.has_today ? "Replace today" : "Set as today"}
+                </button>
               )}
               {!l.is_off_market && (
                 <button onClick={() => patchListing(l.id, { is_off_market: true })} className="rounded-full border border-line px-3 py-1.5">Mark off-market</button>
