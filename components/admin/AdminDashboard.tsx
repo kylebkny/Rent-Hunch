@@ -60,13 +60,24 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     lat: null,
     lng: null,
   });
+  const [schedule, setSchedule] = useState<{
+    has_today: boolean;
+    scheduled: { challenge_date: string; listing_id: string; label: string }[];
+  }>({ has_today: false, scheduled: [] });
+  const [schedListing, setSchedListing] = useState("");
+  const [schedDate, setSchedDate] = useState("");
+  const [tomorrow] = useState(() => new Date(Date.now() + 86_400_000).toISOString().slice(0, 10));
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/admin/listings");
-    if (res.ok) setListings((await res.json()).listings ?? []);
+    const [r1, r2] = await Promise.all([
+      fetch("/api/admin/listings"),
+      fetch("/api/admin/schedule"),
+    ]);
+    if (r1.ok) setListings((await r1.json()).listings ?? []);
+    if (r2.ok) setSchedule(await r2.json());
   }, []);
 
   useEffect(() => {
@@ -239,6 +250,33 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     } else setMessage((await res.json()).error ?? "Delete failed.");
   }
 
+  async function addSchedule() {
+    if (!schedListing || !schedDate) return;
+    const res = await fetch("/api/admin/schedule", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ listing_id: schedListing, challenge_date: schedDate }),
+    });
+    const d = await res.json();
+    setMessage(res.ok ? `Scheduled for ${schedDate}.` : d.error ?? "Could not schedule.");
+    if (res.ok) {
+      setSchedListing("");
+      setSchedDate("");
+      load();
+    }
+  }
+
+  async function removeSchedule(date: string) {
+    const res = await fetch(`/api/admin/schedule?date=${date}`, { method: "DELETE" });
+    if (res.ok) load();
+    else setMessage((await res.json()).error ?? "Could not unschedule.");
+  }
+
+  const eligible = useMemo(
+    () => listings.filter((l) => l.status === "active" && l.is_off_market && l.review_status === "ready"),
+    [listings]
+  );
+
   const shownAmenities = useMemo(
     () => [...AMENITY_OPTIONS, ...amenities.filter((a) => !AMENITY_OPTIONS.includes(a))],
     [amenities]
@@ -252,6 +290,44 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
       </header>
 
       {message && <p className="rounded-xl bg-paper text-ink px-4 py-2.5 text-sm">{message}</p>}
+
+      <section className="rounded-3xl bg-paper text-ink p-6 flex flex-col gap-4 shadow-2xl shadow-black/40">
+        <p className="eyebrow">Schedule</p>
+        {!schedule.has_today && (
+          <p className="text-sm text-red-600">⚠ No challenge is set for today. Use “Set as today” on a listing below.</p>
+        )}
+        {schedule.scheduled.length === 0 ? (
+          <p className="text-sm text-muted">Nothing scheduled ahead. Queue upcoming days below.</p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-line text-sm">
+            {schedule.scheduled.map((s) => (
+              <li key={s.challenge_date} className="flex items-center justify-between py-2 gap-3">
+                <span className="min-w-0">
+                  <span className="font-semibold tabular-nums">{s.challenge_date}</span>{" "}
+                  <span className="text-muted">· {s.label}</span>
+                </span>
+                <button onClick={() => removeSchedule(s.challenge_date)} className="text-xs text-red-600 underline shrink-0">
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <select value={schedListing} onChange={(e) => setSchedListing(e.target.value)} className={inputClass}>
+            <option value="">Choose a listing…</option>
+            {eligible.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.neighborhood} · {l.beds === 0 ? "Studio" : `${l.beds}bd`}/{l.baths}ba · ${l.actual_rent.toLocaleString()}
+              </option>
+            ))}
+          </select>
+          <input type="date" value={schedDate} min={tomorrow} onChange={(e) => setSchedDate(e.target.value)} className={inputClass} />
+          <button type="button" onClick={addSchedule} disabled={!schedListing || !schedDate} className="rounded-full bg-ink text-paper px-5 py-2 text-sm font-medium shrink-0 disabled:opacity-50">
+            Schedule
+          </button>
+        </div>
+      </section>
 
       <form onSubmit={handleSubmit} className="rounded-3xl bg-paper text-ink p-6 flex flex-col gap-4 shadow-2xl shadow-black/40">
         <div className="flex items-center justify-between">

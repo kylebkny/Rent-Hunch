@@ -98,6 +98,9 @@ export async function DELETE(
     );
   }
 
+  // Remove any schedule reservation first (FK would otherwise block delete).
+  await admin.from("scheduled_challenges").delete().eq("listing_id", id);
+
   const { error } = await admin.from("listings").delete().eq("id", id);
   if (error) {
     return NextResponse.json({ error: "Could not delete listing" }, { status: 500 });
