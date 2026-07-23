@@ -42,6 +42,7 @@ function toInsertRow(raw: ExrListingRaw) {
     nearby: null,
     actual_rent: raw.rent!,
     photos: raw.photos, // EXR CDN URLs (hybrid); re-host at vet time if desired
+    address: raw.address || null,
     source: "exr" as const,
     review_status: "draft" as const,
     is_off_market: false,
@@ -92,6 +93,7 @@ export async function ingestScrapedListings(
       // set, and never touch a human's review_status.
       const update: Record<string, unknown> = { actual_rent: raw.rent!, is_off_market: false };
       if (raw.photos.length > 0) update.photos = raw.photos;
+      if (raw.address) update.address = raw.address;
       await admin.from("listings").update(update).eq("id", found.id);
       updated++;
     }

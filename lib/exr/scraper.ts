@@ -621,6 +621,32 @@ async function enrichListings(
   return [...byUrl.values()]
 }
 
+/**
+ * Fetch just the photos for a set of listing detail pages — no index scrape.
+ * Used to backfill photos for listings already in the DB, fast.
+ */
+export async function scrapeListingPhotos(
+  urls: string[]
+): Promise<{ url: string; photos: string[] }[]> {
+  const BATCH_SIZE = 5;
+  const out: { url: string; photos: string[] }[] = [];
+  for (let i = 0; i < urls.length; i += BATCH_SIZE) {
+    const batch = urls.slice(i, i + BATCH_SIZE);
+    const results = await Promise.allSettled(
+      batch.map(async (url) => {
+        try {
+          const html = await fetchPage(url);
+          return { url, photos: extractPhotos(html) };
+        } catch {
+          return { url, photos: [] };
+        }
+      })
+    );
+    for (const r of results) if (r.status === "fulfilled") out.push(r.value);
+  }
+  return out;
+}
+
 // ─── page scraper ────────────────────────────────────────────────────────────
 
 async function scrapePage(pageNum: number): Promise<{ listings: ExrListingRaw[], buildingUrls: string[] }> {

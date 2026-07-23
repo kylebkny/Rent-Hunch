@@ -12,12 +12,17 @@ export async function runExrSync(
   admin: SupabaseClient,
   maxEnrich = 30
 ): Promise<IngestResult | { empty: true }> {
+  // Only skip listings we've already FULLY enriched (they have photos).
+  // Photo-less ones get re-fetched on later runs so photos backfill over time.
   const { data: known } = await admin
     .from("listings")
-    .select("exr_listing_url")
+    .select("exr_listing_url, photos")
     .eq("source", "exr");
   const alreadyEnriched = new Set(
-    (known ?? []).map((r) => r.exr_listing_url).filter(Boolean) as string[]
+    (known ?? [])
+      .filter((r) => Array.isArray(r.photos) && r.photos.length > 0)
+      .map((r) => r.exr_listing_url)
+      .filter(Boolean) as string[]
   );
 
   const { listings, seenUrls } = await scrapeAllExrListings(alreadyEnriched, maxEnrich);

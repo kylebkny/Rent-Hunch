@@ -27,6 +27,7 @@ interface Listing {
   address: string | null;
   lat: number | null;
   lng: number | null;
+  exr_listing_url: string | null;
   source: "manual" | "exr";
   review_status: "draft" | "ready";
   status: "active" | "used";
@@ -68,6 +69,8 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   const [schedDate, setSchedDate] = useState("");
   const [tomorrow] = useState(() => new Date(Date.now() + 86_400_000).toISOString().slice(0, 10));
   const [syncing, setSyncing] = useState(false);
+  const [enriching, setEnriching] = useState(false);
+  const [search, setSearch] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -87,19 +90,26 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   }, [load]);
 
   const filtered = useMemo(() => {
-    switch (filter) {
-      case "exr": return listings.filter((l) => l.source === "exr");
-      case "manual": return listings.filter((l) => l.source === "manual");
-      case "drafts": return listings.filter((l) => l.review_status === "draft");
-      case "ready": return listings.filter((l) => l.review_status === "ready");
-      default: return listings;
-    }
-  }, [listings, filter]);
+    const byFilter =
+      filter === "exr" ? listings.filter((l) => l.source === "exr")
+      : filter === "manual" ? listings.filter((l) => l.source === "manual")
+      : filter === "drafts" ? listings.filter((l) => l.review_status === "draft")
+      : filter === "ready" ? listings.filter((l) => l.review_status === "ready")
+      : listings;
+    const q = search.trim().toLowerCase();
+    if (!q) return byFilter;
+    return byFilter.filter(
+      (l) =>
+        l.neighborhood.toLowerCase().includes(q) ||
+        (l.address ?? "").toLowerCase().includes(q)
+    );
+  }, [listings, filter, search]);
 
   const counts = useMemo(
     () => ({
       exr: listings.filter((l) => l.source === "exr").length,
       drafts: listings.filter((l) => l.review_status === "draft").length,
+      photoless: listings.filter((l) => l.source === "exr" && l.photos.length === 0).length,
     }),
     [listings]
   );
@@ -309,6 +319,31 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     }
   }
 
+  async function backfillPhotos() {
+    setEnriching(true);
+    setMessage("Backfilling photos… up to a minute.");
+    try {
+      const res = await fetch("/api/admin/enrich-exr", { method: "POST" });
+      const d = await res.json();
+      if (!res.ok) {
+        setMessage(d.error ?? "Backfill failed.");
+        return;
+      }
+      setMessage(
+        d.updated > 0
+          ? `Added photos to ${d.updated} listing(s). ${d.remaining} still without photos — run again to continue.`
+          : d.remaining === 0
+            ? "All EXR listings have photos."
+            : "No photos found this pass (EXR photo markup may have changed)."
+      );
+      load();
+    } catch {
+      setMessage("Backfill failed (timed out?). Try again.");
+    } finally {
+      setEnriching(false);
+    }
+  }
+
   const eligible = useMemo(
     () => listings.filter((l) => l.status === "active" && l.is_off_market && l.review_status === "ready"),
     [listings]
@@ -483,7 +518,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
             <p className="eyebrow">Listings ({filtered.length})</p>
             <button
               onClick={syncExr}
@@ -492,6 +527,15 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
             >
               {syncing ? "Syncing EXR…" : "↻ Sync EXR now"}
             </button>
+            {counts.photoless > 0 && (
+              <button
+                onClick={backfillPhotos}
+                disabled={enriching}
+                className="rounded-full bg-paper/10 text-paper text-xs px-3 py-1 hover:bg-paper/20 transition disabled:opacity-50"
+              >
+                {enriching ? "Backfilling…" : `📷 Backfill photos (${counts.photoless})`}
+              </button>
+            )}
           </div>
           <div className="flex gap-1 text-xs">
             {(["all", "exr", "manual", "drafts", "ready"] as Filter[]).map((f) => (
@@ -506,7 +550,16 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
           </div>
         </div>
 
-        {filtered.map((l) => (
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search neighborhood or address…"
+          className="w-full rounded-full bg-paper/10 text-paper placeholder:text-faint px-4 py-2 text-sm focus:outline-none"
+        />
+
+        {filtered.slice(0, 60).map((l) => {
+          const viewUrl = l.listing_url || l.exr_listing_url;
+          return (
           <div key={l.id} className="rounded-2xl bg-paper text-ink p-4 flex gap-3 items-center shadow-lg shadow-black/30">
             {l.photos[0] ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -516,7 +569,18 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
             )}
             <div className="flex-1 min-w-0">
               <div className="font-semibold truncate">
+                {l.address ? l.address : l.neighborhood}
+              </div>
+              <div className="text-xs text-muted truncate">
                 {l.neighborhood} · {l.beds === 0 ? "Studio" : `${l.beds}bd`}/{l.baths}ba · ${l.actual_rent.toLocaleString()}
+                {viewUrl && (
+                  <>
+                    {" · "}
+                    <a href={viewUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">
+                      view ↗
+                    </a>
+                  </>
+                )}
               </div>
               <div className="text-xs text-muted flex gap-2 flex-wrap mt-0.5">
                 <Tag>{l.source}</Tag>
@@ -544,7 +608,13 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
               <button onClick={() => remove(l.id)} className="rounded-full border border-line px-3 py-1.5 text-red-600">Delete</button>
             </div>
           </div>
-        ))}
+          );
+        })}
+        {filtered.length > 60 && (
+          <p className="text-center text-xs text-faint">
+            Showing 60 of {filtered.length}. Use search to narrow it down.
+          </p>
+        )}
       </section>
     </main>
   );
