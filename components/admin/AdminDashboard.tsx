@@ -67,6 +67,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   const [schedListing, setSchedListing] = useState("");
   const [schedDate, setSchedDate] = useState("");
   const [tomorrow] = useState(() => new Date(Date.now() + 86_400_000).toISOString().slice(0, 10));
+  const [syncing, setSyncing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -283,6 +284,31 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     else setMessage((await res.json()).error ?? "Could not unschedule.");
   }
 
+  async function syncExr() {
+    setSyncing(true);
+    setMessage("Syncing EXR… this can take up to a minute.");
+    try {
+      const res = await fetch("/api/admin/sync-exr", { method: "POST" });
+      const d = await res.json();
+      if (!res.ok) {
+        setMessage(d.error ?? "Sync failed.");
+        return;
+      }
+      if (d.empty) {
+        setMessage("Sync ran but found no listings (EXR markup may have changed, or the request was blocked).");
+      } else {
+        setMessage(
+          `EXR sync: ${d.inserted} new draft(s), ${d.updated} updated, ${d.markedOffMarket} newly off-market — ${d.scraped} seen, ${d.skipped} skipped.`
+        );
+      }
+      load();
+    } catch {
+      setMessage("Sync failed (timed out?). Try again.");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   const eligible = useMemo(
     () => listings.filter((l) => l.status === "active" && l.is_off_market && l.review_status === "ready"),
     [listings]
@@ -457,7 +483,16 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <p className="eyebrow">Listings ({filtered.length})</p>
+          <div className="flex items-center gap-3">
+            <p className="eyebrow">Listings ({filtered.length})</p>
+            <button
+              onClick={syncExr}
+              disabled={syncing}
+              className="rounded-full bg-paper/10 text-paper text-xs px-3 py-1 hover:bg-paper/20 transition disabled:opacity-50"
+            >
+              {syncing ? "Syncing EXR…" : "↻ Sync EXR now"}
+            </button>
+          </div>
           <div className="flex gap-1 text-xs">
             {(["all", "exr", "manual", "drafts", "ready"] as Filter[]).map((f) => (
               <button
