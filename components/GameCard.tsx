@@ -14,6 +14,7 @@ import {
 import { sfx } from "@/lib/sound";
 import { buzz } from "@/lib/haptics";
 import { describeNeighborhood } from "@/lib/neighborhoods";
+import { TrainBullets } from "@/components/TrainBullets";
 import type { GuessAttempt, ListingClues } from "@/lib/types";
 
 const SLIDER_MIN = 1000;
@@ -96,7 +97,7 @@ export function GameCard({ clues, photos, round, attempts, onSubmit, submitting 
           {round >= 2 && (
             <ClueRow label="Amenities" value={clues.amenities.length > 0 ? clues.amenities.join(" · ") : "None on file"} />
           )}
-          {round >= 3 && <ClueRow label="Nearest train" value={clues.transit} />}
+          {round >= 3 && <ClueRow label="Nearest train" value={<TrainBullets transit={clues.transit} />} />}
           {round >= 3 && clues.nearby && <ClueRow label="Nearby" value={clues.nearby} />}
         </dl>
       </div>
@@ -184,7 +185,7 @@ export function GameCard({ clues, photos, round, attempts, onSubmit, submitting 
   );
 }
 
-function ClueRow({ label, value, sub }: { label: string; value: string; sub?: string | null }) {
+function ClueRow({ label, value, sub }: { label: string; value: React.ReactNode; sub?: string | null }) {
   return (
     <div className="flex items-baseline justify-between gap-4 py-2.5">
       <dt className="eyebrow shrink-0">{label}</dt>
