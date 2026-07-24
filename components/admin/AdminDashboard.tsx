@@ -242,6 +242,11 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     else setMessage((await res.json()).error ?? "Update failed.");
   }
 
+  async function approve(id: string) {
+    if (!window.confirm("Approve this listing for the game? Its rent will be shown publicly once it's featured.")) return;
+    await patchListing(id, { review_status: "ready", is_off_market: true });
+  }
+
   async function setAsToday(id: string, replace = false) {
     const res = await fetch("/api/admin/challenge", {
       method: "POST",
@@ -385,20 +390,26 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
             ))}
           </ul>
         )}
-        <div className="flex flex-col sm:flex-row gap-2">
-          <select value={schedListing} onChange={(e) => setSchedListing(e.target.value)} className={inputClass}>
-            <option value="">Choose a listing…</option>
-            {eligible.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.neighborhood} · {l.beds === 0 ? "Studio" : `${l.beds}bd`}/{l.baths}ba · ${l.actual_rent.toLocaleString()}
-              </option>
-            ))}
-          </select>
-          <input type="date" value={schedDate} min={tomorrow} onChange={(e) => setSchedDate(e.target.value)} className={inputClass} />
-          <button type="button" onClick={addSchedule} disabled={!schedListing || !schedDate} className="rounded-full bg-ink text-paper px-5 py-2 text-sm font-medium shrink-0 disabled:opacity-50">
-            Schedule
-          </button>
-        </div>
+        {eligible.length === 0 ? (
+          <p className="text-sm text-muted">
+            No featurable listings yet. Approve a listing below (<span className="font-medium text-ink">Approve for game</span>) to schedule it.
+          </p>
+        ) : (
+          <div className="flex flex-col sm:flex-row gap-2">
+            <select value={schedListing} onChange={(e) => setSchedListing(e.target.value)} className={inputClass}>
+              <option value="">Choose a listing…</option>
+              {eligible.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {(l.address ? `${l.address} — ` : "") + l.neighborhood} · {l.beds === 0 ? "Studio" : `${l.beds}bd`}/{l.baths}ba · ${l.actual_rent.toLocaleString()}
+                </option>
+              ))}
+            </select>
+            <input type="date" value={schedDate} min={tomorrow} onChange={(e) => setSchedDate(e.target.value)} className={inputClass} />
+            <button type="button" onClick={addSchedule} disabled={!schedListing || !schedDate} className="rounded-full bg-ink text-paper px-5 py-2 text-sm font-medium shrink-0 disabled:opacity-50">
+              Schedule
+            </button>
+          </div>
+        )}
       </section>
 
       <form onSubmit={handleSubmit} className="rounded-3xl bg-paper text-ink p-6 flex flex-col gap-4 shadow-2xl shadow-black/40">
@@ -559,6 +570,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
 
         {filtered.slice(0, 60).map((l) => {
           const viewUrl = l.listing_url || l.exr_listing_url;
+          const featurable = l.is_off_market && l.review_status === "ready";
           return (
           <div key={l.id} className="rounded-2xl bg-paper text-ink p-4 flex gap-3 items-center shadow-lg shadow-black/30">
             {l.photos[0] ? (
@@ -592,18 +604,17 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
             </div>
             <div className="flex flex-col gap-1.5 shrink-0 text-xs">
               <button onClick={() => startEdit(l)} className="rounded-full border border-line px-3 py-1.5 font-medium">Edit</button>
-              {l.is_off_market && (
-                <button onClick={() => setAsToday(l.id)} className="rounded-full bg-ink text-paper px-3 py-1.5 font-medium">
-                  {schedule.has_today ? "Replace today" : "Set as today"}
-                </button>
-              )}
-              {!l.is_off_market && (
-                <button onClick={() => patchListing(l.id, { is_off_market: true })} className="rounded-full border border-line px-3 py-1.5">Mark off-market</button>
-              )}
-              {l.review_status === "draft" ? (
-                <button onClick={() => patchListing(l.id, { review_status: "ready" })} className="rounded-full border border-line px-3 py-1.5">Mark ready</button>
+              {featurable ? (
+                <>
+                  <button onClick={() => setAsToday(l.id)} className="rounded-full bg-ink text-paper px-3 py-1.5 font-medium">
+                    {schedule.has_today ? "Replace today" : "Set as today"}
+                  </button>
+                  <button onClick={() => patchListing(l.id, { review_status: "draft" })} className="rounded-full border border-line px-3 py-1.5">Unpublish</button>
+                </>
               ) : (
-                <button onClick={() => patchListing(l.id, { review_status: "draft" })} className="rounded-full border border-line px-3 py-1.5">Unpublish</button>
+                <button onClick={() => approve(l.id)} className="rounded-full bg-ledger-green/90 text-paper px-3 py-1.5 font-medium" style={{ backgroundColor: "var(--color-success)" }}>
+                  Approve for game
+                </button>
               )}
               <button onClick={() => remove(l.id)} className="rounded-full border border-line px-3 py-1.5 text-red-600">Delete</button>
             </div>
