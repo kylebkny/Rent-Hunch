@@ -9,6 +9,7 @@ import { sfx } from "@/lib/sound";
 import { buzz } from "@/lib/haptics";
 import { useCountUp } from "@/lib/useCountUp";
 import { Confetti } from "@/components/Confetti";
+import { ReminderToggle } from "@/components/ReminderToggle";
 import type { GuessFinalResponse, TodayChallengeResponse } from "@/lib/types";
 
 const CONFETTI_THRESHOLD = 700;
@@ -150,6 +151,8 @@ export function RevealScreen({
       <p className="text-center text-sm text-muted">
         Next listing in <span className="font-semibold text-ink tabular-nums">{countdown}</span>
       </p>
+
+      <ReminderToggle />
 
       <Link
         href="/play"

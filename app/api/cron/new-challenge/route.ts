@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendDailyPush } from "@/lib/push-server";
 
 function todayET(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
@@ -57,7 +58,7 @@ export async function GET(request: Request) {
   const { data: challenge, error: insertError } = await admin
     .from("daily_challenges")
     .insert({ listing_id: listingId, challenge_date: challengeDate })
-    .select("id")
+    .select("id, edition")
     .single();
 
   if (insertError || !challenge) {
@@ -69,5 +70,7 @@ export async function GET(request: Request) {
     await admin.from("scheduled_challenges").delete().eq("challenge_date", challengeDate);
   }
 
-  return NextResponse.json({ ok: true, challenge_id: challenge.id, listing_id: listingId });
+  const pushed = await sendDailyPush(admin, challenge.edition);
+
+  return NextResponse.json({ ok: true, challenge_id: challenge.id, listing_id: listingId, pushed });
 }
