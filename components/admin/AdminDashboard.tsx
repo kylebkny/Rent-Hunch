@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { AddressAutocomplete, type ResolvedAddress } from "@/components/admin/AddressAutocomplete";
 import { deriveTransit } from "@/lib/transit";
 import {
@@ -361,9 +362,12 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
 
   return (
     <main className="w-full max-w-3xl mx-auto px-4 py-10 flex flex-col gap-8">
-      <header>
-        <p className="eyebrow">Admin · {adminEmail}</p>
-        <h1 className="text-3xl font-extrabold tracking-tight text-paper">Listings</h1>
+      <header className="flex items-end justify-between">
+        <div>
+          <p className="eyebrow">Admin · {adminEmail}</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-paper">Listings</h1>
+        </div>
+        <Link href="/admin/analytics" className="text-sm text-faint hover:text-paper underline">Analytics →</Link>
       </header>
 
       {message && <p className="rounded-xl bg-paper text-ink px-4 py-2.5 text-sm">{message}</p>}

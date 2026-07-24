@@ -37,6 +37,11 @@ export const metadata: Metadata = {
     title,
     description: `A daily rent-price-guessing game. ${SITE_TAGLINE}`,
   },
+  appleWebApp: {
+    capable: true,
+    title: SITE_NAME,
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export default function RootLayout({
