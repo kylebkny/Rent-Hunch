@@ -19,12 +19,19 @@ const VALID = new Set(Object.keys(LINE_COLORS));
 // digit, so "3 min walk" won't be read as the 3 train.
 const LINE_RE = /(?<![A-Za-z0-9])([1-7A-Z](?:\s?[/,]\s?[1-7A-Z])+|[A-Z])(?![A-Za-z0-9])/g;
 
-function parse(transit: string): { lines: string[]; rest: string } {
+// Station names that end in a bare letter — "Avenue J", "Avenue N", "Bay 50
+// St" — would otherwise be read as the J or N train. A letter directly after
+// one of these words is part of the station name, never a line.
+const NOT_A_LINE_AFTER = /(?:^|\s)(?:av|ave|avenue|bay|beach|pier)\s*$/i;
+
+function scan(segment: string): { lines: string[]; rest: string } {
   const lines: string[] = [];
   const seen = new Set<string>();
-  let rest = transit;
+  let rest = segment;
 
-  for (const m of transit.matchAll(LINE_RE)) {
+  for (const m of segment.matchAll(LINE_RE)) {
+    // Single-letter match preceded by "Avenue"/"Bay"/… is a station name.
+    if (m[1].length === 1 && NOT_A_LINE_AFTER.test(segment.slice(0, m.index))) continue;
     for (const tok of m[1].split(/[/,]/)) {
       const line = tok.trim().toUpperCase();
       if (VALID.has(line) && !seen.has(line)) {
@@ -34,10 +41,35 @@ function parse(transit: string): { lines: string[]; rest: string } {
     }
     rest = rest.replace(m[0], " ");
   }
-
-  // Clean the leftover descriptive text (station name, walk time, etc.).
-  rest = rest.replace(/\(\s*\)/g, " ").replace(/[·,]/g, " ").replace(/\s+/g, " ").trim();
   return { lines, rest };
+}
+
+function parse(transit: string): { lines: string[]; rest: string } {
+  // Canonical clues put the lines first — "L, G · Lorimer St · 4 min walk" —
+  // so when the leading segment names lines, only it is scanned and the
+  // station/walk text is left alone. Strings without that shape (e.g. a
+  // hand-typed "L, G, J/M/Z") fall back to scanning the whole value.
+  const cut = transit.indexOf("·");
+  if (cut > 0) {
+    const head = scan(transit.slice(0, cut));
+    if (head.lines.length > 0) {
+      const rest = `${head.rest} ${transit.slice(cut + 1)}`
+        .replace(/\(\s*\)/g, " ")
+        .replace(/·/g, "·")
+        .replace(/\s+/g, " ")
+        .trim();
+      return { lines: head.lines, rest };
+    }
+  }
+
+  const all = scan(transit);
+  // Clean the leftover descriptive text (station name, walk time, etc.).
+  const rest = all.rest
+    .replace(/\(\s*\)/g, " ")
+    .replace(/[·,]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return { lines: all.lines, rest };
 }
 
 function Bullet({ line }: { line: string }) {

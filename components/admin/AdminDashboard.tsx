@@ -80,6 +80,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   const [importHtml, setImportHtml] = useState("");
   const [showPaste, setShowPaste] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [fixingTransit, setFixingTransit] = useState(false);
   const [tomorrow] = useState(() => new Date(Date.now() + 86_400_000).toISOString().slice(0, 10));
   const [syncing, setSyncing] = useState(false);
   const [enriching, setEnriching] = useState(false);
@@ -369,6 +370,24 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     const res = await fetch(`/api/admin/schedule?date=${date}`, { method: "DELETE" });
     if (res.ok) load();
     else setMessage((await res.json()).error ?? "Could not unschedule.");
+  }
+
+  /** Backfill train lines onto older clues that only named a station. */
+  async function fixTransit() {
+    setFixingTransit(true);
+    const res = await fetch("/api/admin/fix-transit", { method: "POST" });
+    const d = await res.json();
+    setFixingTransit(false);
+    if (res.ok) {
+      setMessage(
+        d.fixed > 0
+          ? `Added train lines to ${d.fixed} of ${d.scanned} listings.`
+          : "All train clues already name their lines."
+      );
+      load();
+    } else {
+      setMessage(d.error ?? "Could not fix train clues.");
+    }
   }
 
   async function autofillSchedule() {
@@ -704,6 +723,13 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                 {enriching ? "Backfilling…" : `📷 Backfill photos (${counts.photoless})`}
               </button>
             )}
+            <button
+              onClick={fixTransit}
+              disabled={fixingTransit}
+              className="rounded-full bg-paper/10 text-paper text-xs px-3 py-1 hover:bg-paper/20 transition disabled:opacity-50"
+            >
+              {fixingTransit ? "Fixing…" : "🚇 Add train lines"}
+            </button>
           </div>
           <div className="flex gap-1 text-xs">
             {(["all", "exr", "manual", "drafts", "ready"] as Filter[]).map((f) => (

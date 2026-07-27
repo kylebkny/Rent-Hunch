@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
+import { formatTransitClue } from "@/lib/subway-lines";
+import { deriveTransit } from "@/lib/transit";
 
 export interface ResolvedAddress {
   address: string;
@@ -25,8 +27,13 @@ function readComponents(comps: google.maps.GeocoderAddressComponent[]) {
   };
 }
 
-/** Nearest subway station to a point, as "Bedford Av · 4 min walk". */
-function nearestSubway(loc: google.maps.LatLng): Promise<string | null> {
+/**
+ * Nearest subway station to a point, as "L, G · Lorimer St · 4 min walk".
+ * Google gives us the station name but not which trains stop there, so the
+ * lines come from our own station index (`fallbackLines` covers stations it
+ * doesn't know).
+ */
+function nearestSubway(loc: google.maps.LatLng, fallbackLines = ""): Promise<string | null> {
   return new Promise((resolve) => {
     const g = window.google;
     const svc = new g.maps.places.PlacesService(document.createElement("div"));
@@ -39,7 +46,7 @@ function nearestSubway(loc: google.maps.LatLng): Promise<string | null> {
         }
         const st = results[0];
         const meters = g.maps.geometry.spherical.computeDistanceBetween(loc, st.geometry!.location!);
-        resolve(`${st.name} · ${Math.max(1, Math.round(meters / 80))} min walk`);
+        resolve(formatTransitClue(st.name ?? "", Math.max(1, Math.round(meters / 80)), fallbackLines));
       }
     );
   });
@@ -72,7 +79,7 @@ export async function geocodeAddress(address: string): Promise<ResolvedAddress |
       lng: loc.lng(),
       neighborhood,
       borough,
-      transit: await nearestSubway(loc),
+      transit: await nearestSubway(loc, deriveTransit(neighborhood ?? "")),
     };
   } catch {
     return null;
@@ -123,7 +130,7 @@ export function AddressAutocomplete({ onResolve }: { onResolve: (r: ResolvedAddr
             lng: loc.lng(),
             neighborhood,
             borough,
-            transit: await nearestSubway(loc),
+            transit: await nearestSubway(loc, deriveTransit(neighborhood ?? "")),
           });
         });
       })

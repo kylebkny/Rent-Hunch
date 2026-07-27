@@ -37,7 +37,8 @@ Supabase project.
    - Round 0: neighborhood (+ a "vibe" descriptor for non-locals)
    - Round 1: beds/baths (+ sqft if known)
    - Round 2: amenities
-   - Round 3: nearest train (rendered as MTA line bullets) + nearby places
+   - Round 3: nearest train — line bullets + station + walk time, e.g.
+     ⓁⒼ Lorimer St · 4 min walk — plus nearby places
    - The listing **photos** reveal progressively alongside.
 4. The final guess (4th, an exact hit, or "lock in") returns the **only**
    response that contains `actual_rent`: score, crowd average, percentile,
@@ -92,6 +93,7 @@ schema is in **`SETUP.md`**.
 - `POST /api/admin/sync-exr` — run the EXR scrape on demand.
 - `POST /api/admin/enrich-exr` — backfill photos for photo-less EXR listings.
 - `POST /api/admin/schedule/autofill` — queue ready listings onto empty dates.
+- `POST /api/admin/fix-transit` — backfill train lines onto station-only clues.
 - `POST /api/admin/import-streeteasy` — prefill the form from a StreetEasy link.
 
 **Cron** (Bearer `CRON_SECRET`, configured in `vercel.json`)
@@ -118,7 +120,7 @@ schema is in **`SETUP.md`**.
   all) into the fallback box to get the same result. Imported photos are
   copied into our own Storage bucket rather than hotlinked.
 - **Listings** list: source/status filter, search, EXR sync + photo backfill
-  buttons, per-row actions.
+  + "Add train lines" buttons, per-row actions.
 - **Featurability:** a listing must be `review_status = ready` **and**
   `is_off_market = true` to be featured. The **"Approve for game"** button
   sets both at once (with a confirm — approving an on-market EXR listing
