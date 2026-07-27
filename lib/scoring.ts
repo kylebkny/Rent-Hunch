@@ -8,8 +8,8 @@ export const MAX_POSSIBLE_SCORE = 1000;
 export const MAX_GUESSES = 4;
 
 // Guessing within this fraction of the actual rent counts as a "win" — a
-// reasonable bar for rent (getting within 10% of a real NYC rent is good).
-export const WIN_THRESHOLD = 0.1;
+// tight bar for rent (getting within 5% of a real NYC rent is sharp).
+export const WIN_THRESHOLD = 0.05;
 
 export function isWin(guess: number, actual: number): boolean {
   return Math.abs(guess - actual) / actual <= WIN_THRESHOLD;
