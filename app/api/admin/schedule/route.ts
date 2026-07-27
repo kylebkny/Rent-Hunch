@@ -25,9 +25,23 @@ export async function GET() {
     .eq("challenge_date", today)
     .maybeSingle();
 
+  // Featurable listings not yet scheduled/used — the pool we can auto-fill from.
+  const { count: poolCount } = await admin
+    .from("listings")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "active")
+    .eq("review_status", "ready")
+    .eq("is_off_market", true);
+
+  const scheduledCount = scheduled?.length ?? 0;
+  // Days of content on hand: today (if set) + future scheduled + the ready pool.
+  const runwayDays = (todayChallenge ? 1 : 0) + scheduledCount + (poolCount ?? 0);
+
   return NextResponse.json({
     today,
     has_today: !!todayChallenge,
+    pool_count: poolCount ?? 0,
+    runway_days: runwayDays,
     scheduled: (scheduled ?? []).map((s) => {
       const l = Array.isArray(s.listings) ? s.listings[0] : s.listings;
       return {

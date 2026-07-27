@@ -9,7 +9,7 @@ import {
   BATH_OPTIONS,
   BED_OPTIONS,
   BOROUGHS,
-  BROOKLYN_NEIGHBORHOODS,
+  NYC_NEIGHBORHOODS,
 } from "@/lib/listing-options";
 
 interface Listing {
@@ -64,10 +64,13 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   });
   const [schedule, setSchedule] = useState<{
     has_today: boolean;
+    pool_count?: number;
+    runway_days?: number;
     scheduled: { challenge_date: string; listing_id: string; label: string }[];
   }>({ has_today: false, scheduled: [] });
   const [schedListing, setSchedListing] = useState("");
   const [schedDate, setSchedDate] = useState("");
+  const [autofilling, setAutofilling] = useState(false);
   const [tomorrow] = useState(() => new Date(Date.now() + 86_400_000).toISOString().slice(0, 10));
   const [syncing, setSyncing] = useState(false);
   const [enriching, setEnriching] = useState(false);
@@ -300,6 +303,23 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     else setMessage((await res.json()).error ?? "Could not unschedule.");
   }
 
+  async function autofillSchedule() {
+    setAutofilling(true);
+    const res = await fetch("/api/admin/schedule/autofill", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ days: 14 }),
+    });
+    const d = await res.json();
+    setAutofilling(false);
+    if (res.ok) {
+      setMessage(d.filled > 0 ? `Auto-filled ${d.filled} day${d.filled === 1 ? "" : "s"}.` : d.message ?? "Nothing to fill.");
+      load();
+    } else {
+      setMessage(d.error ?? "Could not auto-fill.");
+    }
+  }
+
   async function syncExr() {
     setSyncing(true);
     setMessage("Syncing EXR… this can take up to a minute.");
@@ -373,7 +393,36 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
       {message && <p className="rounded-xl bg-paper text-ink px-4 py-2.5 text-sm">{message}</p>}
 
       <section className="rounded-3xl bg-paper text-ink p-6 flex flex-col gap-4 shadow-2xl shadow-black/40">
-        <p className="eyebrow">Schedule</p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="eyebrow">Schedule</p>
+          {schedule.runway_days != null && (
+            <span
+              className={`text-xs font-semibold rounded-full px-3 py-1 ${
+                schedule.runway_days >= 7
+                  ? "bg-success-bg text-success"
+                  : schedule.runway_days >= 3
+                    ? "bg-amber-100 text-amber-700"
+                    : "bg-red-100 text-red-700"
+              }`}
+            >
+              ~{schedule.runway_days} day{schedule.runway_days === 1 ? "" : "s"} of runway
+            </span>
+          )}
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm text-muted">
+            {schedule.pool_count ?? 0} ready listing{(schedule.pool_count ?? 0) === 1 ? "" : "s"} in the pool ·{" "}
+            {schedule.scheduled.length} queued ahead
+          </p>
+          <button
+            type="button"
+            onClick={autofillSchedule}
+            disabled={autofilling || (schedule.pool_count ?? 0) === 0}
+            className="rounded-full border border-line text-ink px-4 py-1.5 text-sm font-medium shrink-0 hover:border-ink transition disabled:opacity-50"
+          >
+            {autofilling ? "Filling…" : "Auto-fill 14 days"}
+          </button>
+        </div>
         {!schedule.has_today && (
           <p className="text-sm text-red-600">⚠ No challenge is set for today. Use “Set as today” on a listing below.</p>
         )}
@@ -444,7 +493,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
               className={inputClass}
             />
             <datalist id="neighborhoods">
-              {BROOKLYN_NEIGHBORHOODS.map((n) => <option key={n} value={n} />)}
+              {NYC_NEIGHBORHOODS.map((n) => <option key={n} value={n} />)}
             </datalist>
           </Field>
           <Field label="Borough">

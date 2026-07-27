@@ -9,7 +9,7 @@ export default function Home() {
       <HowToPlay />
       <MuteToggle />
       <header className="text-center px-14">
-        <p className="eyebrow">Daily Rent Game · Brooklyn</p>
+        <p className="eyebrow">Daily Rent Game · NYC</p>
         <h1 className="mt-2 text-4xl sm:text-5xl font-extrabold tracking-tight text-paper">
           {SITE_NAME}
         </h1>

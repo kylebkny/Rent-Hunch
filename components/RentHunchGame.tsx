@@ -135,7 +135,7 @@ export function RentHunchGame() {
         <p className="text-4xl">🏠</p>
         <p className="font-semibold text-lg">No listing today — yet.</p>
         <p className="text-sm text-muted">
-          A fresh Brooklyn rental drops every morning. In the meantime, try a random one.
+          A fresh NYC rental drops every morning. In the meantime, try a random one.
         </p>
         <Link
           href="/play"

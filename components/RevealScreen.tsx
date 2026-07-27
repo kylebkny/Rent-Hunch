@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { MAX_POSSIBLE_SCORE, guessTrailEmoji, bandEmoji } from "@/lib/scoring";
+import { MAX_POSSIBLE_SCORE, guessTrailEmoji, bandEmoji, isWin } from "@/lib/scoring";
 import { shareResult } from "@/lib/share";
 import { SITE_NAME } from "@/lib/brand";
 import { sfx } from "@/lib/sound";
@@ -11,8 +11,6 @@ import { useCountUp } from "@/lib/useCountUp";
 import { Confetti } from "@/components/Confetti";
 import { ReminderToggle } from "@/components/ReminderToggle";
 import type { GuessFinalResponse, TodayChallengeResponse } from "@/lib/types";
-
-const CONFETTI_THRESHOLD = 700;
 
 function nextEtMidnightCountdown(): string {
   const now = new Date();
@@ -35,12 +33,13 @@ export function RevealScreen({
   today: TodayChallengeResponse;
   reveal: GuessFinalResponse;
 }) {
-  const { edition, score, actual_rent, crowd_avg, best_guess, guesses, percentile, streak, listing_url } = reveal;
+  const { edition, score, actual_rent, crowd_avg, best_guess, guesses, percentile, streak, listing_url, rank, players_today } = reveal;
 
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(nextEtMidnightCountdown);
   const played = useRef(false);
-  const celebrate = score >= CONFETTI_THRESHOLD;
+  const won = isWin(best_guess, actual_rent);
+  const celebrate = won;
 
   const displayScore = useCountUp(score, 1000);
   const displayRent = useCountUp(actual_rent, 1100);
@@ -97,6 +96,13 @@ export function RevealScreen({
       </div>
 
       <div className="flex flex-col items-center gap-2">
+        <p className={`text-lg font-bold ${won ? "text-success" : "text-ink"}`}>
+          {won
+            ? `🎯 Nailed it! Within ${offPct}%`
+            : offPct <= 20
+              ? `So close — ${offPct}% off`
+              : `${offPct}% off`}
+        </p>
         <div
           className="inline-flex items-baseline gap-2 rounded-full px-4 py-1.5"
           style={{ backgroundColor: "var(--color-success-bg)", color: "var(--color-success)" }}
@@ -108,7 +114,8 @@ export function RevealScreen({
         <p className="text-sm text-muted">
           Best guess{" "}
           <span className="font-semibold text-ink tabular-nums">${best_guess.toLocaleString()}</span>{" "}
-          · <span className="tabular-nums">${offBy.toLocaleString()}</span> ({offPct}%) off
+          · <span className="tabular-nums">${offBy.toLocaleString()}</span> off · crowd guessed{" "}
+          <span className="tabular-nums">${crowd_avg.toLocaleString()}</span>
         </p>
       </div>
 
@@ -122,10 +129,17 @@ export function RevealScreen({
       </div>
 
       <dl className="grid grid-cols-3 gap-2 text-center border-y border-line py-4">
-        <Stat label="Beat" value={`${percentile}%`} />
+        <Stat label="Rank today" value={`#${rank}`} />
         <Stat label="Streak" value={`${streak}🔥`} />
-        <Stat label="Crowd avg" value={`$${crowd_avg.toLocaleString()}`} />
+        <Stat label="Beat" value={`${percentile}%`} />
       </dl>
+
+      <Link
+        href="/leaderboard"
+        className="w-full rounded-full bg-ink text-paper font-semibold py-3 text-center hover:bg-ink-soft transition"
+      >
+        🏆 You&apos;re #{rank} of {players_today} today — see the leaderboard
+      </Link>
 
       {listing_url && (
         <a
@@ -140,7 +154,7 @@ export function RevealScreen({
 
       <button
         onClick={handleShare}
-        className="w-full rounded-full bg-ink text-paper font-semibold py-3.5 px-6 hover:bg-ink-soft transition"
+        className="w-full rounded-full border border-line text-ink font-semibold py-3 px-6 hover:border-ink transition"
       >
         Share result
       </button>
@@ -161,8 +175,7 @@ export function RevealScreen({
         Keep playing — free play →
       </Link>
 
-      <div className="flex justify-center gap-6 text-sm font-medium text-muted">
-        <Link href="/leaderboard" className="hover:text-ink transition">Leaderboard</Link>
+      <div className="flex justify-center text-sm font-medium text-muted">
         <Link href="/history" className="hover:text-ink transition">History</Link>
       </div>
     </div>

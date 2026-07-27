@@ -64,6 +64,8 @@ export interface GuessFinalResponse {
   streak: number;
   display_name: string | null;
   listing_url: string | null;
+  rank: number;
+  players_today: number;
 }
 
 export type GuessResponse = GuessHintResponse | GuessFinalResponse;

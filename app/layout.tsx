@@ -19,12 +19,12 @@ const plexMono = IBM_Plex_Mono({
   weight: ["400", "500", "600"],
 });
 
-const title = `${SITE_NAME} — Guess the Brooklyn rent`;
+const title = `${SITE_NAME} — Guess the NYC rent`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title,
-  description: `A daily rent-price-guessing game. ${SITE_TAGLINE} New Brooklyn rental every day.`,
+  description: `A daily rent-price-guessing game. ${SITE_TAGLINE} New NYC rental every day.`,
   openGraph: {
     title,
     description: `A daily rent-price-guessing game. ${SITE_TAGLINE}`,

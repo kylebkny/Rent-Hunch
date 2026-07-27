@@ -1,7 +1,7 @@
 // Shared option lists for the admin form, so entry is mostly selection
 // rather than free typing — keeps data consistent across listings.
 
-export const BOROUGHS = ["Brooklyn", "Queens", "Manhattan", "Bronx", "Staten Island"];
+export const BOROUGHS = ["Brooklyn", "Manhattan", "Queens", "Bronx", "Staten Island"];
 
 export const BROOKLYN_NEIGHBORHOODS = [
   "Williamsburg", "Greenpoint", "Bushwick", "Bedford-Stuyvesant", "Bed-Stuy",
@@ -14,6 +14,21 @@ export const BROOKLYN_NEIGHBORHOODS = [
   "Brighton Beach", "Coney Island", "Canarsie", "Brownsville", "East New York",
   "Marine Park", "Flatlands",
 ];
+
+export const MANHATTAN_NEIGHBORHOODS = [
+  "Upper East Side", "Upper West Side", "Midtown", "Midtown East",
+  "Hell's Kitchen", "Chelsea", "Greenwich Village", "West Village",
+  "East Village", "Lower East Side", "SoHo", "NoHo", "Nolita", "Tribeca",
+  "Financial District", "Battery Park City", "Gramercy", "Flatiron",
+  "Union Square", "Murray Hill", "Kips Bay", "NoMad", "Turtle Bay",
+  "Lenox Hill", "Yorkville", "Carnegie Hill", "Morningside Heights",
+  "Harlem", "East Harlem", "Hamilton Heights", "Washington Heights",
+  "Inwood", "Chinatown", "Little Italy", "Two Bridges", "Hudson Yards",
+  "Roosevelt Island",
+];
+
+// Combined list for the neighborhood typeahead.
+export const NYC_NEIGHBORHOODS = [...BROOKLYN_NEIGHBORHOODS, ...MANHATTAN_NEIGHBORHOODS];
 
 export const AMENITY_OPTIONS = [
   "Dishwasher", "In-unit Laundry", "Laundry in Building", "Elevator",

@@ -41,16 +41,16 @@ export function HowToPlay() {
               <button onClick={() => setOpen(false)} aria-label="Close" className="text-muted text-xl leading-none">✕</button>
             </div>
             <ol className="flex flex-col gap-3 text-sm text-ink">
-              <Rule n="1">Study today&apos;s Brooklyn listing — a new clue unlocks with each guess.</Rule>
+              <Rule n="1">Study today&apos;s NYC listing — a new clue unlocks with each guess.</Rule>
               <Rule n="2">Make up to <b>4 guesses</b> at the monthly rent. After each, you&apos;ll see if you&apos;re <b>too high or low</b> and how <b>warm</b> you are (🟩 hot · 🟨 warm · 🟥 cold).</Rule>
               <Rule n="3">Your score is set by your <b>closest</b> guess. Nailing it early earns a small bonus, but getting close is what matters.</Rule>
               <Rule n="4">Come back every day to build your 🔥 <b>streak</b> and climb the leaderboard.</Rule>
             </ol>
             <div className="rounded-xl bg-mist p-3 text-xs text-muted">
-              <b className="text-ink">New to NYC rents?</b> As a rough anchor, Brooklyn studios run
-              ~$2,500–3,500, 1-beds ~$3,000–4,500, and 2-beds ~$3,800–6,000 — trendier,
-              waterfront, and doorman buildings push higher. The neighborhood note under each
-              clue tells you how pricey the area tends to be.
+              <b className="text-ink">New to NYC rents?</b> As a rough anchor, studios run
+              ~$2,500–3,800, 1-beds ~$3,000–5,000, and 2-beds ~$3,800–7,000 — Manhattan,
+              trendier, waterfront, and doorman buildings push higher; outer Brooklyn is lower.
+              The neighborhood note under each clue tells you how pricey the area tends to be.
             </div>
             <button
               onClick={() => setOpen(false)}

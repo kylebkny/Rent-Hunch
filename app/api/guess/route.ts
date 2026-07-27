@@ -130,6 +130,8 @@ export async function POST(request: Request) {
     : bestGuess;
   const beaten = rows.filter((r) => r.score < score).length;
   const percentile = rows.length > 1 ? Math.round((beaten / rows.length) * 100) : 100;
+  const rank = rows.filter((r) => r.score > score).length + 1;
+  const playersToday = rows.length;
 
   const res: GuessResponse = {
     final: true,
@@ -144,6 +146,8 @@ export async function POST(request: Request) {
     streak: newStreak,
     display_name: displayName,
     listing_url: listingUrl,
+    rank,
+    players_today: playersToday,
   };
   return NextResponse.json(res);
 }

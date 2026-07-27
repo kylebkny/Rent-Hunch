@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 import { SITE_NAME } from "@/lib/brand";
 
 export const runtime = "edge";
-export const alt = "What's the Rent — guess the Brooklyn rent";
+export const alt = "What's the Rent — guess the NYC rent";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -66,7 +66,7 @@ export default async function Image() {
               fontWeight: 600,
             }}
           >
-            Daily Brooklyn Rent Game
+            Daily NYC Rent Game
           </div>
           <div
             style={{

@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: SITE_NAME,
     short_name: SITE_NAME,
-    description: "A daily rent-price-guessing game for Brooklyn rentals.",
+    description: "A daily rent-price-guessing game for NYC rentals.",
     start_url: "/",
     display: "standalone",
     background_color: "#000000",

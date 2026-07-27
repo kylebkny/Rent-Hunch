@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient as createAuthClient } from "@/lib/supabase/server";
 import { SITE_NAME } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +10,7 @@ function todayET(): string {
 }
 
 interface DailyRow {
+  user_id: string;
   guess_amount: number;
   score: number;
   profiles: { display_name: string | null } | { display_name: string | null }[] | null;
@@ -25,6 +27,14 @@ export default async function LeaderboardPage() {
   const admin = createAdminClient();
   const challengeDate = todayET();
 
+  // Who's viewing — so we can highlight their own row. Anonymous players still
+  // have a Supabase auth id from the silent anonymous sign-in.
+  const authClient = await createAuthClient();
+  const {
+    data: { user },
+  } = await authClient.auth.getUser();
+  const myId = user?.id ?? null;
+
   const { data: challenge } = await admin
     .from("daily_challenges")
     .select("id, edition")
@@ -35,7 +45,7 @@ export default async function LeaderboardPage() {
   if (challenge) {
     const { data } = await admin
       .from("guesses")
-      .select("guess_amount, score, profiles(display_name)")
+      .select("user_id, guess_amount, score, profiles(display_name)")
       .eq("challenge_id", challenge.id)
       .order("score", { ascending: false })
       .limit(20);
@@ -64,10 +74,15 @@ export default async function LeaderboardPage() {
           <ol className="flex flex-col divide-y divide-line text-sm">
             {dailyRows.map((row, i) => {
               const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+              const isMe = myId != null && row.user_id === myId;
               return (
-                <li key={i} className="flex justify-between py-2.5">
-                  <span className="text-muted">
+                <li
+                  key={i}
+                  className={`flex justify-between py-2.5 px-3 -mx-3 ${isMe ? "rounded-xl bg-success-bg" : ""}`}
+                >
+                  <span className={isMe ? "font-semibold text-ink" : "text-muted"}>
                     <span className="tabular-nums">{i + 1}.</span> {profile?.display_name ?? "Anonymous"}
+                    {isMe && <span className="text-success"> · you</span>}
                   </span>
                   <span className="font-semibold tabular-nums">{row.score} pts</span>
                 </li>
@@ -83,17 +98,24 @@ export default async function LeaderboardPage() {
           <p className="text-sm text-muted">No players yet.</p>
         ) : (
           <ol className="flex flex-col divide-y divide-line text-sm">
-            {(allTimeRows as AllTimeRow[]).map((row, i) => (
-              <li key={row.user_id} className="flex justify-between py-2.5">
-                <span className="text-muted">
-                  <span className="tabular-nums">{i + 1}.</span> {row.display_name ?? "Anonymous"}
-                  {row.streak_count > 0 && (
-                    <span className="text-success"> · {row.streak_count}🔥</span>
-                  )}
-                </span>
-                <span className="font-semibold tabular-nums">{row.total_score} pts</span>
-              </li>
-            ))}
+            {(allTimeRows as AllTimeRow[]).map((row, i) => {
+              const isMe = myId != null && row.user_id === myId;
+              return (
+                <li
+                  key={row.user_id}
+                  className={`flex justify-between py-2.5 px-3 -mx-3 ${isMe ? "rounded-xl bg-success-bg" : ""}`}
+                >
+                  <span className={isMe ? "font-semibold text-ink" : "text-muted"}>
+                    <span className="tabular-nums">{i + 1}.</span> {row.display_name ?? "Anonymous"}
+                    {isMe && <span className="text-success"> · you</span>}
+                    {row.streak_count > 0 && (
+                      <span className="text-success"> · {row.streak_count}🔥</span>
+                    )}
+                  </span>
+                  <span className="font-semibold tabular-nums">{row.total_score} pts</span>
+                </li>
+              );
+            })}
           </ol>
         )}
       </section>

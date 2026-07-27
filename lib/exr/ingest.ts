@@ -3,7 +3,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ExrListingRaw } from "@/lib/exr/scraper";
 import { deriveTransit, KNOWN_NEIGHBORHOODS } from "@/lib/transit";
 
-const KNOWN_BK = new Set(KNOWN_NEIGHBORHOODS.map((n) => n.toLowerCase()));
+const KNOWN = new Set(KNOWN_NEIGHBORHOODS.map((n) => n.toLowerCase()));
+const ELIGIBLE_BOROUGHS = new Set(["brooklyn", "manhattan"]);
 
 export interface IngestResult {
   scraped: number;
@@ -13,9 +14,11 @@ export interface IngestResult {
   skipped: number;
 }
 
-function isBrooklyn(raw: ExrListingRaw): boolean {
-  if (raw.borough && raw.borough.toLowerCase() === "brooklyn") return true;
-  if (raw.neighborhood && KNOWN_BK.has(raw.neighborhood.trim().toLowerCase())) return true;
+// We feature Brooklyn + Manhattan (the neighborhoods we have clue/transit
+// data for). Other boroughs are scraped-but-skipped for now.
+function isEligible(raw: ExrListingRaw): boolean {
+  if (raw.borough && ELIGIBLE_BOROUGHS.has(raw.borough.toLowerCase())) return true;
+  if (raw.neighborhood && KNOWN.has(raw.neighborhood.trim().toLowerCase())) return true;
   return false;
 }
 
@@ -33,7 +36,7 @@ function isComplete(raw: ExrListingRaw): boolean {
 function toInsertRow(raw: ExrListingRaw) {
   return {
     neighborhood: raw.neighborhood!.trim(),
-    city: "Brooklyn",
+    city: raw.borough?.trim() || "Brooklyn",
     beds: raw.beds!,
     baths: Math.round(raw.baths!), // schema stores baths as int
     sqft: null,
@@ -65,7 +68,7 @@ export async function ingestScrapedListings(
   scraped: ExrListingRaw[],
   seenUrls: string[]
 ): Promise<IngestResult> {
-  const usable = scraped.filter((r) => isBrooklyn(r) && isComplete(r));
+  const usable = scraped.filter((r) => isEligible(r) && isComplete(r));
   const skipped = scraped.length - usable.length;
   // Every URL the site showed this run — used for conservative off-market
   // detection (a listing is only "gone" when absent from the whole site).
