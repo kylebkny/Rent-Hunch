@@ -51,7 +51,10 @@ export async function POST(request: Request) {
   const errors: string[] = [];
   if (!body.neighborhood?.trim()) errors.push("neighborhood");
   if (typeof body.beds !== "number") errors.push("beds");
-  if (typeof body.baths !== "number") errors.push("baths");
+  // Half baths are allowed (1.5, 2.5) but nothing finer.
+  if (typeof body.baths !== "number" || body.baths <= 0 || (body.baths * 2) % 1 !== 0) {
+    errors.push("baths");
+  }
   if (typeof body.actual_rent !== "number" || body.actual_rent <= 0) errors.push("rent");
   if (!body.transit?.trim()) errors.push("transit");
   if (errors.length > 0) {

@@ -17,7 +17,7 @@ create table if not exists listings (
   neighborhood text not null,
   city text not null default 'Brooklyn',
   beds int not null,
-  baths int not null,
+  baths numeric(3,1) not null,
   sqft int,
   amenities jsonb not null default '[]'::jsonb,
   transit text not null,

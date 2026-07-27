@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { AddressAutocomplete, type ResolvedAddress } from "@/components/admin/AddressAutocomplete";
+import {
+  AddressAutocomplete,
+  geocodeAddress,
+  type ResolvedAddress,
+} from "@/components/admin/AddressAutocomplete";
 import { deriveTransit } from "@/lib/transit";
 import {
   AMENITY_OPTIONS,
@@ -10,6 +14,7 @@ import {
   BED_OPTIONS,
   BOROUGHS,
   NYC_NEIGHBORHOODS,
+  formatBedsBaths,
 } from "@/lib/listing-options";
 
 interface Listing {
@@ -71,6 +76,10 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   const [schedListing, setSchedListing] = useState("");
   const [schedDate, setSchedDate] = useState("");
   const [autofilling, setAutofilling] = useState(false);
+  const [importUrl, setImportUrl] = useState("");
+  const [importHtml, setImportHtml] = useState("");
+  const [showPaste, setShowPaste] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [tomorrow] = useState(() => new Date(Date.now() + 86_400_000).toISOString().slice(0, 10));
   const [syncing, setSyncing] = useState(false);
   const [enriching, setEnriching] = useState(false);
@@ -145,6 +154,9 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     setPhotos([]);
     setCustomAmenity("");
     setGeo({ address: "", lat: null, lng: null });
+    setImportUrl("");
+    setImportHtml("");
+    setShowPaste(false);
   }
 
   function handleResolved(r: ResolvedAddress) {
@@ -155,6 +167,62 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
       transit: r.transit ?? f.transit,
     }));
     setGeo({ address: r.address, lat: r.lat, lng: r.lng });
+  }
+
+  /** Paste a StreetEasy link → fill as much of the form as we can read. */
+  async function importFromStreetEasy() {
+    const url = importUrl.trim();
+    if (!url && !importHtml.trim()) return;
+    setImporting(true);
+    setMessage(null);
+
+    const res = await fetch("/api/admin/import-streeteasy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url, html: importHtml.trim() || undefined }),
+    });
+    const d = await res.json();
+    if (!res.ok) {
+      setImporting(false);
+      setMessage(d.error ?? "Could not import that link.");
+      return;
+    }
+
+    const l = d.listing;
+    setForm((f) => ({
+      ...f,
+      neighborhood: l.neighborhood ?? f.neighborhood,
+      city: l.city && BOROUGHS.includes(l.city) ? l.city : f.city,
+      beds: l.beds != null ? String(l.beds) : f.beds,
+      baths: l.baths != null ? String(l.baths) : f.baths,
+      sqft: l.sqft != null ? String(l.sqft) : f.sqft,
+      actual_rent: l.actual_rent != null ? String(l.actual_rent) : f.actual_rent,
+      transit: l.transit || f.transit,
+      listing_url: l.listing_url ?? f.listing_url,
+    }));
+    if (l.amenities?.length) setAmenities((a) => Array.from(new Set([...a, ...l.amenities])));
+    if (l.photos?.length) setPhotos((p) => Array.from(new Set([...p, ...l.photos])));
+    if (l.address) setGeo({ address: l.address, lat: null, lng: null });
+
+    // Geocode the address so neighborhood / nearest train / lat-lng are exact,
+    // rather than trusting whatever the page copy said.
+    let geocoded = false;
+    if (l.geocode_address) {
+      const r = await geocodeAddress(l.geocode_address);
+      if (r) {
+        geocoded = true;
+        handleResolved({ ...r, address: l.address ?? r.address });
+      }
+    }
+
+    setImporting(false);
+    const parts = [...(d.filled ?? [])];
+    if (geocoded) parts.push("train", "map pin");
+    setMessage(
+      d.blocked
+        ? `StreetEasy blocked the page read. Filled ${parts.join(", ") || "nothing"} from the link alone — paste the page source below to get rent/beds/baths, or type them in.`
+        : `Imported: ${parts.join(", ") || "nothing usable"}. Check the numbers before saving.`
+    );
   }
 
   function startEdit(l: Listing) {
@@ -453,7 +521,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
               <option value="">Choose a listing…</option>
               {eligible.map((l) => (
                 <option key={l.id} value={l.id}>
-                  {(l.address ? `${l.address} — ` : "") + l.neighborhood} · {l.beds === 0 ? "Studio" : `${l.beds}bd`}/{l.baths}ba · ${l.actual_rent.toLocaleString()}
+                  {(l.address ? `${l.address} — ` : "") + l.neighborhood} · {formatBedsBaths(l.beds, l.baths)} · ${l.actual_rent.toLocaleString()}
                 </option>
               ))}
             </select>
@@ -472,6 +540,42 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
             <button type="button" onClick={resetForm} className="text-xs text-muted underline">
               Cancel edit
             </button>
+          )}
+        </div>
+
+        <div className="rounded-2xl bg-mist p-4 flex flex-col gap-2">
+          <span className="eyebrow">Import from StreetEasy</span>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              value={importUrl}
+              onChange={(e) => setImportUrl(e.target.value)}
+              placeholder="https://streeteasy.com/building/…"
+              className={inputClass}
+            />
+            <button
+              type="button"
+              onClick={importFromStreetEasy}
+              disabled={importing || (!importUrl.trim() && !importHtml.trim())}
+              className="rounded-full bg-ink text-paper px-5 py-2 text-sm font-medium shrink-0 disabled:opacity-50"
+            >
+              {importing ? "Importing…" : "Import"}
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowPaste((v) => !v)}
+            className="text-xs text-muted underline self-start"
+          >
+            {showPaste ? "Hide" : "StreetEasy blocked it? Paste the page source"}
+          </button>
+          {showPaste && (
+            <textarea
+              value={importHtml}
+              onChange={(e) => setImportHtml(e.target.value)}
+              rows={4}
+              placeholder="On the listing page: right-click → View Page Source, select all, paste here."
+              className={`${inputClass} font-mono text-xs`}
+            />
           )}
         </div>
 
@@ -637,7 +741,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                 {l.address ? l.address : l.neighborhood}
               </div>
               <div className="text-xs text-muted truncate">
-                {l.neighborhood} · {l.beds === 0 ? "Studio" : `${l.beds}bd`}/{l.baths}ba · ${l.actual_rent.toLocaleString()}
+                {l.neighborhood} · {formatBedsBaths(l.beds, l.baths)} · ${l.actual_rent.toLocaleString()}
                 {viewUrl && (
                   <>
                     {" · "}

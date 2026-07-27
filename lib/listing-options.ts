@@ -49,7 +49,23 @@ export const BED_OPTIONS = [
 
 export const BATH_OPTIONS = [
   { value: 1, label: "1 bath" },
+  { value: 1.5, label: "1.5 bath" },
   { value: 2, label: "2 bath" },
+  { value: 2.5, label: "2.5 bath" },
   { value: 3, label: "3 bath" },
+  { value: 3.5, label: "3.5 bath" },
   { value: 4, label: "4+ bath" },
 ];
+
+/** "1 bath" / "1.5 baths" — trims a trailing .0 and pluralizes. */
+export function formatBaths(baths: number): string {
+  const n = Number(baths);
+  const label = Number.isInteger(n) ? String(n) : n.toFixed(1);
+  return `${label} ${n === 1 ? "bath" : "baths"}`;
+}
+
+/** "1bd/1.5ba" style short label used in admin lists. */
+export function formatBedsBaths(beds: number, baths: number): string {
+  const b = Number(baths);
+  return `${beds === 0 ? "Studio" : `${beds}bd`}/${Number.isInteger(b) ? b : b.toFixed(1)}ba`;
+}

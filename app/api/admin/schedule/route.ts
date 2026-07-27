@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { formatBedsBaths } from "@/lib/listing-options";
 
 function todayET(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
@@ -47,7 +48,7 @@ export async function GET() {
       return {
         challenge_date: s.challenge_date,
         listing_id: s.listing_id,
-        label: l ? `${l.neighborhood} · ${l.beds === 0 ? "Studio" : `${l.beds}bd`}/${l.baths}ba · $${l.actual_rent.toLocaleString()}` : "—",
+        label: l ? `${l.neighborhood} · ${formatBedsBaths(l.beds, l.baths)} · $${l.actual_rent.toLocaleString()}` : "—",
       };
     }),
   });

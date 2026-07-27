@@ -38,7 +38,9 @@ function toInsertRow(raw: ExrListingRaw) {
     neighborhood: raw.neighborhood!.trim(),
     city: raw.borough?.trim() || "Brooklyn",
     beds: raw.beds!,
-    baths: Math.round(raw.baths!), // schema stores baths as int
+    // Half baths are preserved — the column is numeric(3,1). Snap to the
+    // nearest 0.5 so odd scraped values (1.25) land on a real bath count.
+    baths: Math.round(raw.baths! * 2) / 2,
     sqft: null,
     amenities: [],
     transit: deriveTransit(raw.neighborhood!.trim()),

@@ -14,6 +14,7 @@ import {
 import { sfx } from "@/lib/sound";
 import { buzz } from "@/lib/haptics";
 import { describeNeighborhood } from "@/lib/neighborhoods";
+import { formatBaths } from "@/lib/listing-options";
 import { TrainBullets } from "@/components/TrainBullets";
 import type { GuessAttempt, ListingClues } from "@/lib/types";
 
@@ -89,7 +90,7 @@ export function GameCard({ clues, photos, round, attempts, onSubmit, submitting 
             <ClueRow
               label="Layout"
               value={
-                `${clues.beds === 0 ? "Studio" : `${clues.beds} bed`} · ${clues.baths} bath` +
+                `${clues.beds === 0 ? "Studio" : `${clues.beds} bed`} · ${formatBaths(clues.baths)}` +
                 (clues.sqft ? ` · ${clues.sqft.toLocaleString()} sqft` : "")
               }
             />

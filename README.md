@@ -1,8 +1,8 @@
 # What's the Rent
 
-A daily rent-price-guessing game for Brooklyn rentals — study a listing's
-clues, make up to four guesses at the monthly rent with warmer/colder hints,
-and see how close you got. Companion to [resios.co](https://resios.co) (Kyle
+A daily rent-price-guessing game for NYC rentals (Brooklyn + Manhattan) —
+study a listing's clues, make up to four guesses at the monthly rent with
+warmer/colder hints, and see how close you got. Companion to [resios.co](https://resios.co) (Kyle
 Davis, EXR real estate) but fully isolated: its own Vercel project, its own
 Supabase project.
 
@@ -91,21 +91,32 @@ schema is in **`SETUP.md`**.
 - `GET/POST/DELETE /api/admin/schedule` — the future-date queue.
 - `POST /api/admin/sync-exr` — run the EXR scrape on demand.
 - `POST /api/admin/enrich-exr` — backfill photos for photo-less EXR listings.
+- `POST /api/admin/schedule/autofill` — queue ready listings onto empty dates.
+- `POST /api/admin/import-streeteasy` — prefill the form from a StreetEasy link.
 
 **Cron** (Bearer `CRON_SECRET`, configured in `vercel.json`)
 - `GET /api/cron/new-challenge` — daily rollover (uses the schedule queue,
   else auto-picks the oldest featurable listing).
-- `GET /api/cron/sync-exr` — weekly EXR sync.
+- `GET /api/cron/sync-exr` — EXR sync (Mon + Thu).
 
 ---
 
 ## Admin (`/admin`)
 
-- **Schedule** panel: warns if today is unset, lists upcoming days, and queues
-  a featurable listing to a future date.
-- **New/Edit listing**: selects for beds/baths/borough, amenity chips,
-  multi-photo upload, optional Google address autocomplete (autofills
-  neighborhood/borough/nearest-train + stores lat/lng), listing link.
+- **Schedule** panel: warns if today is unset, lists upcoming days, shows a
+  **days-of-runway** badge, queues a listing to a future date, and
+  **Auto-fill 14 days** drops ready listings onto the next empty dates.
+- **New/Edit listing**: selects for beds/baths/borough (half baths supported),
+  amenity chips, multi-photo upload, optional Google address autocomplete
+  (autofills neighborhood/borough/nearest-train + stores lat/lng), listing link.
+- **Import from StreetEasy**: paste a listing link to prefill the form. The
+  URL slug alone yields address/unit/borough (no network needed), which is
+  then geocoded for the exact neighborhood, nearest train and lat/lng. We also
+  make a best-effort read of the page for rent/beds/baths/sqft/amenities/photos
+  — StreetEasy sits behind bot protection, so when that read is blocked the
+  form says so and you can paste the page source (View Page Source → select
+  all) into the fallback box to get the same result. Imported photos are
+  copied into our own Storage bucket rather than hotlinked.
 - **Listings** list: source/status filter, search, EXR sync + photo backfill
   buttons, per-row actions.
 - **Featurability:** a listing must be `review_status = ready` **and**
@@ -162,7 +173,7 @@ sign-ins**, create an admin Supabase user, set the env vars, redeploy, then
 seed/approve a listing and "Set as today".
 
 Cron schedule (`vercel.json`): daily rollover `0 4 * * *` (≈midnight ET),
-weekly EXR sync `0 8 * * 1`.
+EXR sync `0 8 * * 1,4` (Mon + Thu).
 
 ---
 
