@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { isAdmin } from "@/lib/admin-auth";
-import { parseStreetEasyUrl, parseListingHtml, isStreetEasyUrl } from "@/lib/streeteasy";
+import {
+  parseStreetEasyUrl,
+  parseListingHtml,
+  normalizeStreetEasyUrl,
+} from "@/lib/streeteasy";
 import { deriveTransit } from "@/lib/transit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { rehostExternalPhotos } from "@/lib/exr/rehost";
@@ -53,14 +57,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const url = body.url?.trim() ?? "";
+  const rawUrl = body.url?.trim() ?? "";
   const pastedHtml = body.html?.trim() ?? "";
 
-  if (!url && !pastedHtml) {
+  if (!rawUrl && !pastedHtml) {
     return NextResponse.json({ error: "Paste a StreetEasy link" }, { status: 400 });
   }
-  if (url && !isStreetEasyUrl(url)) {
-    return NextResponse.json({ error: "That doesn't look like a streeteasy.com link" }, { status: 400 });
+  const url = rawUrl ? normalizeStreetEasyUrl(rawUrl) : null;
+  if (rawUrl && !url) {
+    return NextResponse.json(
+      { error: `That doesn't look like a streeteasy.com link: "${rawUrl.slice(0, 80)}"` },
+      { status: 400 }
+    );
   }
 
   const parts = url ? parseStreetEasyUrl(url) : null;
@@ -68,6 +76,13 @@ export async function POST(request: Request) {
   // Pasted source wins — it's the page the admin actually saw.
   const html = pastedHtml || (url ? await tryFetch(url) : null);
   const fields = html ? parseListingHtml(html) : null;
+
+  // A page we could read but couldn't understand is a different problem from
+  // one we never got — say which, so the fix is obvious.
+  const readPage = html !== null;
+  const gotAnythingFromPage =
+    fields !== null &&
+    (fields.rent !== null || fields.beds !== null || fields.baths !== null || fields.photos.length > 0);
 
   // The URL slug is authoritative for the street address; the page is
   // authoritative for everything else.
@@ -91,10 +106,26 @@ export async function POST(request: Request) {
   if (fields?.sqft != null) filled.push("sqft");
   if (photos.length) filled.push(`${photos.length} photos`);
 
+  // What the admin should do next, in plain language.
+  let note: string;
+  if (!readPage) {
+    note = parts?.address
+      ? "StreetEasy blocked the page read, so rent/beds/baths are missing. Paste the page source below to fill them in."
+      : "StreetEasy blocked the page read, and this URL has no address in it (the /rental/… form doesn't). Paste the page source below.";
+  } else if (!gotAnythingFromPage) {
+    note = pastedHtml
+      ? "Read the pasted source but couldn't find the listing details in it — make sure you copied the whole page (View Page Source → select all), not just a section."
+      : "Read the page but couldn't find listing details in it. Try the paste-the-source fallback below.";
+  } else {
+    note = "Check the numbers against the listing before saving.";
+  }
+
   return NextResponse.json({
     ok: true,
     // True when we couldn't read the page at all — the admin can paste source.
-    blocked: !html,
+    blocked: !readPage,
+    read_page: readPage,
+    note,
     listing: {
       listing_url: parts?.canonicalUrl ?? url ?? null,
       address: address && parts?.unit ? `${address} #${parts.unit}` : address,

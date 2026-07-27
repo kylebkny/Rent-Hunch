@@ -56,8 +56,27 @@ function titleCaseSlug(slug: string): string {
     .join(" ");
 }
 
+/**
+ * Accept what people actually paste: with or without a scheme, with or
+ * without `www.`, and with trailing whitespace from a copy. Returns null if
+ * it isn't a StreetEasy link at all.
+ */
+export function normalizeStreetEasyUrl(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  let url: URL;
+  try {
+    url = new URL(withScheme);
+  } catch {
+    return null;
+  }
+  if (!/^(www\.)?streeteasy\.com$/i.test(url.hostname)) return null;
+  return url.toString();
+}
+
 export function isStreetEasyUrl(value: string): boolean {
-  return /^https?:\/\/(www\.)?streeteasy\.com\//i.test(value.trim());
+  return normalizeStreetEasyUrl(value) !== null;
 }
 
 /**
@@ -67,13 +86,9 @@ export function isStreetEasyUrl(value: string): boolean {
  *   /rental/1234567                             ← opaque id, nothing to read
  */
 export function parseStreetEasyUrl(rawUrl: string): StreetEasyUrlParts | null {
-  let url: URL;
-  try {
-    url = new URL(rawUrl.trim());
-  } catch {
-    return null;
-  }
-  if (!/streeteasy\.com$/i.test(url.hostname.replace(/^www\./i, ""))) return null;
+  const normalized = normalizeStreetEasyUrl(rawUrl);
+  if (!normalized) return null;
+  const url = new URL(normalized);
 
   const canonicalUrl = `${url.origin}${url.pathname}`.replace(/\/$/, "");
   const segments = url.pathname.split("/").filter(Boolean);

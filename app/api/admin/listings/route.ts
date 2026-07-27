@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { describeDbError } from "@/lib/db-error";
 
 interface ListingBody {
   neighborhood?: string;
@@ -31,7 +32,11 @@ export async function GET() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    return NextResponse.json({ error: "Could not load listings" }, { status: 500 });
+    console.error("[admin/listings] load failed", error);
+    return NextResponse.json(
+      { error: describeDbError(error, "Could not load listings") },
+      { status: 500 }
+    );
   }
   return NextResponse.json({ listings: data });
 }
@@ -87,7 +92,11 @@ export async function POST(request: Request) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: "Could not create listing" }, { status: 500 });
+    console.error("[admin/listings] insert failed", error);
+    return NextResponse.json(
+      { error: describeDbError(error, "Could not create listing") },
+      { status: 500 }
+    );
   }
   return NextResponse.json({ id: data.id });
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { rehostExternalPhotos } from "@/lib/exr/rehost";
+import { describeDbError } from "@/lib/db-error";
 
 interface PatchBody {
   neighborhood?: string;
@@ -69,7 +70,11 @@ export async function PATCH(
 
   const { error } = await admin.from("listings").update(update).eq("id", id);
   if (error) {
-    return NextResponse.json({ error: "Could not update listing" }, { status: 500 });
+    console.error("[admin/listings] update failed", error);
+    return NextResponse.json(
+      { error: describeDbError(error, "Could not update listing") },
+      { status: 500 }
+    );
   }
   return NextResponse.json({ ok: true });
 }
@@ -103,7 +108,11 @@ export async function DELETE(
 
   const { error } = await admin.from("listings").delete().eq("id", id);
   if (error) {
-    return NextResponse.json({ error: "Could not delete listing" }, { status: 500 });
+    console.error("[admin/listings] delete failed", error);
+    return NextResponse.json(
+      { error: describeDbError(error, "Could not delete listing") },
+      { status: 500 }
+    );
   }
   return NextResponse.json({ ok: true });
 }

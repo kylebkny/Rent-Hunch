@@ -54,6 +54,22 @@ const EMPTY_FORM = {
   listing_url: "",
 };
 
+
+/**
+ * A select whose value came from data (an import, an older row) may not match
+ * any preset option, which renders as a blank dropdown and quietly loses the
+ * value. This appends the current value as an option when it's missing.
+ */
+function withCurrent(
+  options: { value: number; label: string }[],
+  current: string,
+  label: (v: number) => string
+): { value: number; label: string }[] {
+  const n = Number(current);
+  if (!current || !Number.isFinite(n) || options.some((o) => o.value === n)) return options;
+  return [...options, { value: n, label: label(n) }].sort((a, b) => a.value - b.value);
+}
+
 export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   const [listings, setListings] = useState<Listing[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
@@ -219,11 +235,13 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     setImporting(false);
     const parts = [...(d.filled ?? [])];
     if (geocoded) parts.push("train", "map pin");
-    setMessage(
-      d.blocked
-        ? `StreetEasy blocked the page read. Filled ${parts.join(", ") || "nothing"} from the link alone — paste the page source below to get rent/beds/baths, or type them in.`
-        : `Imported: ${parts.join(", ") || "nothing usable"}. Check the numbers before saving.`
-    );
+    const filledText = parts.length > 0 ? `Filled ${parts.join(", ")}.` : "Filled nothing.";
+    const geoNote =
+      !geocoded && l.geocode_address
+        ? " Couldn't geocode the address — check that the Geocoding API is enabled on your Google Maps key."
+        : "";
+    setMessage(`${filledText} ${d.note ?? ""}${geoNote}`.trim());
+    if (d.blocked) setShowPaste(true);
   }
 
   function startEdit(l: Listing) {
@@ -231,8 +249,11 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     setForm({
       neighborhood: l.neighborhood,
       city: l.city,
-      beds: String(l.beds),
-      baths: String(l.baths),
+      // Normalize to the canonical option value ("1", "1.5") — a numeric
+      // column can come back as "1.0", which matches no option and would
+      // render the dropdown blank.
+      beds: String(Number(l.beds)),
+      baths: String(Number(l.baths)),
       sqft: l.sqft != null ? String(l.sqft) : "",
       transit: l.transit,
       nearby: l.nearby ?? "",
@@ -626,12 +647,16 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
           </Field>
           <Field label="Bedrooms" required>
             <select value={form.beds} onChange={(e) => setField("beds", e.target.value)} className={inputClass}>
-              {BED_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              {withCurrent(BED_OPTIONS, form.beds, (v) => `${v} bed`).map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
             </select>
           </Field>
           <Field label="Bathrooms" required>
             <select value={form.baths} onChange={(e) => setField("baths", e.target.value)} className={inputClass}>
-              {BATH_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              {withCurrent(BATH_OPTIONS, form.baths, (v) => `${v} bath`).map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
             </select>
           </Field>
           <Field label="Rent ($/mo)" required>
