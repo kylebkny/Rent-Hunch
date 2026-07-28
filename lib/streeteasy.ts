@@ -187,6 +187,42 @@ function num(value: unknown): number | null {
 }
 
 /**
+ * Zillow's CDN serves the same photo at many sizes, each with its own URL:
+ *
+ *   .../fp/<id>-se_large_800_400.jpg
+ *   .../fp/<id>-cc_ft_384.jpg
+ *   .../fp/<id>-uncropped_scaled_within_1536_1152.jpg
+ *
+ * De-duplicating on the full URL therefore keeps all of them, which is why an
+ * import produced the same room three times. The stable identity is the `<id>`
+ * before the first size suffix.
+ */
+function photoIdentity(url: string): string {
+  const file = url.split("/").pop() ?? url;
+  const base = file.replace(/\.(jpg|jpeg|png|webp)$/i, "");
+  // Everything up to the first "-<suffix>" is the photo id.
+  const dash = base.indexOf("-");
+  return dash > 0 ? base.slice(0, dash) : base;
+}
+
+/** Rough pixel budget of a variant, used to keep the biggest one. */
+function variantSize(url: string): number {
+  const nums = (url.match(/(\d{2,5})/g) ?? []).map(Number).filter((n) => n >= 64 && n <= 8000);
+  return nums.length > 0 ? Math.max(...nums) : 0;
+}
+
+/** One entry per distinct photo, keeping the largest variant of each. */
+function dedupePhotos(urls: string[]): string[] {
+  const best = new Map<string, string>();
+  for (const url of urls) {
+    const id = photoIdentity(url);
+    const current = best.get(id);
+    if (!current || variantSize(url) > variantSize(current)) best.set(id, url);
+  }
+  return [...best.values()];
+}
+
+/**
  * Pull the listing facts out of a StreetEasy page. Everything is best-effort:
  * each field falls back from structured data → meta tags → visible text, and
  * anything that can't be found stays null for the admin to fill in.
@@ -313,17 +349,9 @@ export function parseListingHtml(html: string): StreetEasyListingFields {
 
   // 6. Photos — StreetEasy serves listing images off Zillow's CDN.
   const photoRe = /https:\/\/photos\.zillowstatic\.com\/[^\s"'\\<>]+?\.(?:jpg|jpeg|png|webp)/gi;
-  const seen = new Set<string>();
-  for (const url of html.match(photoRe) ?? []) {
-    const clean = decodeEntities(url);
-    if (!seen.has(clean)) {
-      seen.add(clean);
-      fields.photos.push(clean);
-    }
-  }
+  const found = (html.match(photoRe) ?? []).map(decodeEntities);
   const ogImage = metaContent(html, "og:image");
-  if (ogImage && !seen.has(ogImage)) fields.photos.unshift(ogImage);
-  fields.photos = fields.photos.slice(0, 12);
+  fields.photos = dedupePhotos(ogImage ? [ogImage, ...found] : found).slice(0, 12);
 
   if (fields.baths !== null) fields.baths = Math.round(fields.baths * 2) / 2;
   if (fields.beds !== null) fields.beds = Math.round(fields.beds);

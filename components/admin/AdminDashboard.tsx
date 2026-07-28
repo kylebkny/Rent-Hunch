@@ -245,12 +245,22 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     }
 
     setImporting(false);
-    const parts = [...(d.filled ?? [])];
-    if (geocoded) parts.push("train", "map pin");
+    // Name the values, not just the field names — "filled neighborhood" is
+    // impossible to tell apart from a field that stayed blank.
+    const parts: string[] = [];
+    if (l.address) parts.push(`address “${l.address}”`);
+    if (l.neighborhood) parts.push(`neighborhood “${l.neighborhood}”`);
+    if (l.city) parts.push(`borough “${l.city}”`);
+    if (l.actual_rent != null) parts.push(`rent $${Number(l.actual_rent).toLocaleString()}`);
+    if (l.beds != null) parts.push(`${l.beds} bed`);
+    if (l.baths != null) parts.push(`${l.baths} bath`);
+    if (l.sqft != null) parts.push(`${l.sqft} sqft`);
+    if (l.photos?.length) parts.push(`${l.photos.length} photos`);
+    if (geocoded) parts.push("nearest train", "map pin");
     const filledText = parts.length > 0 ? `Filled ${parts.join(", ")}.` : "Filled nothing.";
     const geoNote =
       !geocoded && l.geocode_address
-        ? " Couldn't geocode the address — check that the Geocoding API is enabled on your Google Maps key."
+        ? " Couldn't place the address on the map, so there's no pin or walk-time — everything else still saves."
         : "";
     setMessage(`${filledText} ${d.note ?? ""}${geoNote}`.trim());
     if (d.blocked) setShowPaste(true);
@@ -645,12 +655,21 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
         </div>
 
         <AddressAutocomplete onResolve={handleResolved} />
-        {geo.address && (
-          <p className="text-xs text-muted">
-            📍 {geo.address}
-            {geo.lat != null && geo.lng != null ? " · geocoded" : ""}
+        <Field label="Address (internal — never shown as a clue)">
+          <input
+            value={geo.address}
+            onChange={(e) => setGeo((g) => ({ ...g, address: e.target.value }))}
+            placeholder="Filled by the search above or a StreetEasy import"
+            className={inputClass}
+          />
+          <p className="mt-1 text-xs text-muted">
+            {geo.lat != null && geo.lng != null
+              ? "📍 Geocoded — map pin saved."
+              : geo.address
+                ? "No map pin yet (couldn't geocode) — the address still saves."
+                : "\u00A0"}
           </p>
-        )}
+        </Field>
 
         <div className="grid grid-cols-2 gap-3">
           <Field label="Neighborhood" required>

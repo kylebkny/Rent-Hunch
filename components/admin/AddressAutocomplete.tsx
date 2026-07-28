@@ -61,29 +61,94 @@ export async function geocodeAddress(address: string): Promise<ResolvedAddress |
   if (!KEY || !address.trim()) return null;
   try {
     setOptions({ key: KEY, v: "weekly" });
-    await Promise.all([importLibrary("places"), importLibrary("geometry"), importLibrary("geocoding")]);
-    const g = window.google;
-    const geocoder = new g.maps.Geocoder();
+    await Promise.all([importLibrary("places"), importLibrary("geometry")]);
+
+    const viaGeocoder = await tryGeocoder(address);
+    // The Geocoding API is a separate product from Places and is often not
+    // enabled on a key that already does autocomplete. Places can resolve the
+    // same address, so fall back to it rather than failing the import.
+    const place = viaGeocoder ?? (await tryPlacesLookup(address));
+    if (!place) return null;
+
+    const { location, formatted, components } = place;
+    const { neighborhood, borough } = readComponents(components);
+    return {
+      address: formatted || address,
+      lat: location.lat(),
+      lng: location.lng(),
+      neighborhood,
+      borough,
+      transit: await nearestSubway(location, deriveTransit(neighborhood ?? "")),
+    };
+  } catch {
+    return null;
+  }
+}
+
+interface PlaceHit {
+  location: google.maps.LatLng;
+  formatted: string;
+  components: google.maps.GeocoderAddressComponent[];
+}
+
+async function tryGeocoder(address: string): Promise<PlaceHit | null> {
+  try {
+    await importLibrary("geocoding");
+    const geocoder = new window.google.maps.Geocoder();
     const { results } = await geocoder.geocode({
       address,
       componentRestrictions: { country: "us" },
       bounds: NYC_BOUNDS,
     });
-    const place = results?.[0];
-    if (!place?.geometry?.location) return null;
-    const loc = place.geometry.location;
-    const { neighborhood, borough } = readComponents(place.address_components ?? []);
+    const r = results?.[0];
+    if (!r?.geometry?.location) return null;
     return {
-      address: place.formatted_address ?? address,
-      lat: loc.lat(),
-      lng: loc.lng(),
-      neighborhood,
-      borough,
-      transit: await nearestSubway(loc, deriveTransit(neighborhood ?? "")),
+      location: r.geometry.location,
+      formatted: r.formatted_address ?? "",
+      components: r.address_components ?? [],
     };
   } catch {
     return null;
   }
+}
+
+/** Resolve an address through the Places API (already enabled for autocomplete). */
+function tryPlacesLookup(address: string): Promise<PlaceHit | null> {
+  return new Promise((resolve) => {
+    const g = window.google;
+    const svc = new g.maps.places.PlacesService(document.createElement("div"));
+    svc.findPlaceFromQuery(
+      { query: address, fields: ["geometry", "formatted_address", "place_id"] },
+      (results, status) => {
+        const hit = results?.[0];
+        if (status !== g.maps.places.PlacesServiceStatus.OK || !hit?.geometry?.location) {
+          resolve(null);
+          return;
+        }
+        // findPlaceFromQuery can't return address_components, so pull the full
+        // record for the neighborhood/borough breakdown.
+        if (!hit.place_id) {
+          resolve({
+            location: hit.geometry.location,
+            formatted: hit.formatted_address ?? "",
+            components: [],
+          });
+          return;
+        }
+        svc.getDetails(
+          { placeId: hit.place_id, fields: ["geometry", "formatted_address", "address_components"] },
+          (detail, detailStatus) => {
+            const ok = detailStatus === g.maps.places.PlacesServiceStatus.OK && detail?.geometry?.location;
+            resolve({
+              location: ok ? detail!.geometry!.location! : hit.geometry!.location!,
+              formatted: (ok ? detail!.formatted_address : hit.formatted_address) ?? "",
+              components: (ok ? detail!.address_components : []) ?? [],
+            });
+          }
+        );
+      }
+    );
+  });
 }
 
 /**
