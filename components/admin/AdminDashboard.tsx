@@ -97,6 +97,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   const [showPaste, setShowPaste] = useState(false);
   const [importing, setImporting] = useState(false);
   const [fixingTransit, setFixingTransit] = useState(false);
+  const [importDiag, setImportDiag] = useState<string | null>(null);
   const [tomorrow] = useState(() => new Date(Date.now() + 86_400_000).toISOString().slice(0, 10));
   const [syncing, setSyncing] = useState(false);
   const [enriching, setEnriching] = useState(false);
@@ -193,6 +194,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     setImporting(true);
     setMessage(null);
 
+    setImportDiag(null);
     const res = await fetch("/api/admin/import-streeteasy", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -203,6 +205,16 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
       setImporting(false);
       setMessage(d.error ?? "Could not import that link.");
       return;
+    }
+    if (Array.isArray(d.attempts) && d.attempts.length > 0) {
+      setImportDiag(
+        d.attempts
+          .map(
+            (a: { agent: string; status: number | string; bytes: number; verdict: string }) =>
+              `${a.agent}: ${a.verdict} (status ${a.status}, ${a.bytes} bytes)`
+          )
+          .join("\n")
+      );
     }
 
     const l = d.listing;
@@ -606,16 +618,29 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
             onClick={() => setShowPaste((v) => !v)}
             className="text-xs text-muted underline self-start"
           >
-            {showPaste ? "Hide" : "StreetEasy blocked it? Paste the page source"}
+            {showPaste ? "Hide paste box" : "StreetEasy blocked it? Paste the page instead"}
           </button>
           {showPaste && (
-            <textarea
-              value={importHtml}
-              onChange={(e) => setImportHtml(e.target.value)}
-              rows={4}
-              placeholder="On the listing page: right-click → View Page Source, select all, paste here."
-              className={`${inputClass} font-mono text-xs`}
-            />
+            <>
+              <p className="text-xs text-muted">
+                Open the listing, select all (⌘A) and copy (⌘C), then paste here — plain
+                text is enough for rent, beds, baths, sqft and amenities. Pasting the page
+                source instead (right-click → View Page Source) also gets the photos.
+              </p>
+              <textarea
+                value={importHtml}
+                onChange={(e) => setImportHtml(e.target.value)}
+                rows={4}
+                placeholder="Paste the listing page here…"
+                className={`${inputClass} font-mono text-xs`}
+              />
+            </>
+          )}
+          {importDiag && (
+            <details className="text-xs text-muted">
+              <summary className="cursor-pointer underline">What the fetch got back</summary>
+              <pre className="mt-1 whitespace-pre-wrap font-mono">{importDiag}</pre>
+            </details>
           )}
         </div>
 

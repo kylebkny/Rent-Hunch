@@ -17,32 +17,67 @@ interface ImportBody {
   html?: string;
 }
 
+interface FetchAttempt {
+  agent: string;
+  status: number | string;
+  bytes: number;
+  verdict: "ok" | "challenge" | "http-error" | "network-error";
+}
+
+const AGENTS: { label: string; ua: string }[] = [
+  {
+    label: "browser",
+    ua: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36",
+  },
+  // Sites commonly allow link-unfurling crawlers through so previews work,
+  // and the og: tags carry rent/beds/baths. We identify ourselves honestly
+  // rather than impersonating a specific company's crawler.
+  { label: "bot", ua: "WhatsTheRentBot/1.0 (+https://game.resios.co)" },
+];
+
 /**
  * Best-effort fetch of a StreetEasy page. StreetEasy fronts its pages with bot
- * protection, so this is expected to fail some of the time — the caller falls
- * back to what the URL alone tells us, and the admin can paste the page source
- * to fill in the rest.
+ * protection and blocks datacenter IPs, so this frequently fails — every
+ * attempt is recorded so the admin can see exactly what came back instead of
+ * just "it didn't work".
  */
-async function tryFetch(url: string): Promise<string | null> {
-  try {
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36",
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-      },
-      signal: AbortSignal.timeout(15_000),
-      redirect: "follow",
-    });
-    if (!res.ok) return null;
-    const html = await res.text();
-    // A captcha/challenge page is a 200 with no listing content in it.
-    if (/px-captcha|perimeterx|are you a human|unusual traffic/i.test(html)) return null;
-    return html;
-  } catch {
-    return null;
+async function tryFetch(url: string): Promise<{ html: string | null; attempts: FetchAttempt[] }> {
+  const attempts: FetchAttempt[] = [];
+
+  for (const { label, ua } of AGENTS) {
+    try {
+      const res = await fetch(url, {
+        headers: {
+          "User-Agent": ua,
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+        signal: AbortSignal.timeout(15_000),
+        redirect: "follow",
+      });
+      const body = await res.text();
+      if (!res.ok) {
+        attempts.push({ agent: label, status: res.status, bytes: body.length, verdict: "http-error" });
+        continue;
+      }
+      // A captcha/challenge page is a 200 with no listing content in it.
+      if (/px-captcha|perimeterx|are you a human|unusual traffic|access to this page has been denied/i.test(body)) {
+        attempts.push({ agent: label, status: res.status, bytes: body.length, verdict: "challenge" });
+        continue;
+      }
+      attempts.push({ agent: label, status: res.status, bytes: body.length, verdict: "ok" });
+      return { html: body, attempts };
+    } catch (e) {
+      attempts.push({
+        agent: label,
+        status: e instanceof Error ? e.name : "error",
+        bytes: 0,
+        verdict: "network-error",
+      });
+    }
   }
+
+  return { html: null, attempts };
 }
 
 export async function POST(request: Request) {
@@ -74,7 +109,13 @@ export async function POST(request: Request) {
   const parts = url ? parseStreetEasyUrl(url) : null;
 
   // Pasted source wins — it's the page the admin actually saw.
-  const html = pastedHtml || (url ? await tryFetch(url) : null);
+  let html: string | null = pastedHtml || null;
+  let attempts: FetchAttempt[] = [];
+  if (!html && url) {
+    const result = await tryFetch(url);
+    html = result.html;
+    attempts = result.attempts;
+  }
   const fields = html ? parseListingHtml(html) : null;
 
   // A page we could read but couldn't understand is a different problem from
@@ -126,6 +167,9 @@ export async function POST(request: Request) {
     blocked: !readPage,
     read_page: readPage,
     note,
+    // What each fetch attempt actually got back, so a failure is debuggable
+    // rather than just "didn't work".
+    attempts,
     listing: {
       listing_url: parts?.canonicalUrl ?? url ?? null,
       address: address && parts?.unit ? `${address} #${parts.unit}` : address,

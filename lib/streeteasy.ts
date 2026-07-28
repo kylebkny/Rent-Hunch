@@ -13,7 +13,7 @@
  *      from their own browser when the fetch is blocked.
  */
 
-import { AMENITY_OPTIONS } from "@/lib/listing-options";
+import { AMENITY_OPTIONS, NYC_NEIGHBORHOODS } from "@/lib/listing-options";
 
 export interface StreetEasyUrlParts {
   /** Street address recovered from the slug, e.g. "119 North 11 Street". */
@@ -244,11 +244,11 @@ export function parseListingHtml(html: string): StreetEasyListingFields {
 
   // 3. Beds / baths.
   if (fields.beds === null) {
-    if (/\bstudio\b/i.test(`${title} ${description}`)) fields.beds = 0;
-    else {
-      const m = haystack.match(/(\d+)\s*(?:bed(?:room)?s?\b|bd\b|BR\b)/i);
-      if (m) fields.beds = parseInt(m[1], 10);
-    }
+    // An explicit bed count wins; "studio" is only consulted when there isn't
+    // one, so a "studio-style kitchen" in a 2-bed's description can't win.
+    const m = haystack.match(/(\d+)\s*(?:bed(?:room)?s?\b|bd\b|BR\b)/i);
+    if (m) fields.beds = parseInt(m[1], 10);
+    else if (/\bstudio\b/i.test(haystack)) fields.beds = 0;
   }
   if (fields.baths === null) {
     const m = haystack.match(/(\d+(?:\.\d)?)\s*(?:bath(?:room)?s?\b|ba\b)/i);
@@ -262,14 +262,33 @@ export function parseListingHtml(html: string): StreetEasyListingFields {
     }
   }
 
-  // 4. Neighborhood — StreetEasy titles read "… in Williamsburg, Brooklyn".
-  const hood = haystack.match(
-    /\bin\s+([A-Z][A-Za-z'’.\- ]{2,30}?),\s*(Brooklyn|Manhattan|Queens|Bronx|Staten Island|New York)\b/
-  );
+  // 4. Neighborhood. Matching our own list first is far more reliable than a
+  // shape-based regex, and it keeps the value consistent with the typeahead.
+  // Longest match wins so "East Williamsburg" beats "Williamsburg".
+  const lowerHay = haystack.toLowerCase();
+  for (const candidate of NYC_NEIGHBORHOODS) {
+    const c = candidate.toLowerCase();
+    if (!new RegExp(`\\b${c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(lowerHay)) continue;
+    if (!fields.neighborhood || candidate.length > fields.neighborhood.length) {
+      fields.neighborhood = candidate;
+    }
+  }
+  // Fall back to the shape StreetEasy copy uses: "… in Williamsburg, Brooklyn"
+  // or a bare "Williamsburg, Brooklyn" line.
+  const hood =
+    haystack.match(
+      /\bin\s+([A-Z][A-Za-z'’.\- ]{2,30}?),\s*(Brooklyn|Manhattan|Queens|Bronx|Staten Island|New York)\b/
+    ) ??
+    haystack.match(
+      /\b([A-Z][A-Za-z'’.\- ]{2,30}?),\s*(Brooklyn|Manhattan|Queens|Bronx|Staten Island|New York)\b/
+    );
   if (hood) {
-    fields.neighborhood = hood[1].trim();
-    const b = hood[2] === "New York" ? "Manhattan" : hood[2];
-    fields.borough = fields.borough ?? b;
+    fields.neighborhood = fields.neighborhood ?? hood[1].trim();
+    fields.borough = fields.borough ?? (hood[2] === "New York" ? "Manhattan" : hood[2]);
+  }
+  if (!fields.borough) {
+    const b = haystack.match(/\b(Brooklyn|Manhattan|Queens|Bronx|Staten Island)\b/);
+    if (b) fields.borough = b[1];
   }
   if (fields.borough === "New York") fields.borough = "Manhattan";
 
