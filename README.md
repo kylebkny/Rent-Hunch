@@ -10,9 +10,10 @@ Supabase project.
 > (`SITE_NAME` in `lib/brand.ts`). The repo/package/one component are still
 > named `rent-hunch` internally — cosmetic only.
 
-- **Live (prod):** the Vercel `renthunch` project → intended public home
-  `game.resios.co` (attach in Vercel → Domains).
+- **Live (prod):** [game.resios.co](https://game.resios.co) — the Vercel
+  `renthunch` project (domain attached and working).
 - **Admin:** `/admin` (Supabase email/password, allow-listed).
+- **Branch:** work has been landing on `claude/rent-hunch-game-build-0iqzeu`.
 
 ---
 
@@ -46,11 +47,36 @@ Supabase project.
 5. **Scoring** (`lib/scoring.ts`): `1000 × accuracy(bestGuess) ×
    guessMultiplier`. Accuracy dominates (linear, 0 at ≥50% off); finishing in
    fewer guesses is a small bonus (`1.0 / 0.97 / 0.94 / 0.9`).
-6. Reveal shows a non-spoiling **share card** (branded, building motif,
-   temperature pills — not a Wordle grid) and a countdown to the next puzzle.
+6. **Winning** is a separate idea from scoring: `isWin()` is true within
+   `WIN_THRESHOLD` (**5%**) of the actual rent. That drives the reveal
+   headline and the confetti — not the score.
+7. Reveal shows today's **rank**, a prominent leaderboard CTA, and a
+   non-spoiling **share card** (branded, building motif, temperature pills —
+   not a Wordle grid) plus a countdown to the next puzzle. `/leaderboard`
+   highlights the viewer's own row in both lists.
 
 **Freeplay** (`/play`) serves random past/eligible listings for unlimited
 casual rounds — no streak, no leaderboard, nothing persisted.
+
+---
+
+## Where things live
+
+| Path | What it is |
+|---|---|
+| `lib/scoring.ts` | score curve, `MAX_GUESSES`, `WIN_THRESHOLD`/`isWin`, hint bands |
+| `lib/listing-options.ts` | neighborhoods, boroughs, bed/bath/amenity options, `formatBaths` |
+| `lib/transit.ts` | neighborhood → subway lines (coarse) |
+| `lib/subway-lines.ts` | station → lines, authored per route and inverted; disambiguates repeated station names ("86 St") against the neighborhood |
+| `lib/neighborhoods.ts` | one-line "vibe" copy per neighborhood |
+| `lib/streeteasy.ts` | StreetEasy URL + page parsing (pure, easy to unit-test) |
+| `lib/exr/` | EXR scraper, ingest, photo re-host, sync |
+| `lib/db-error.ts` | translates Postgres errors into actionable admin messages |
+| `lib/supabase/admin.ts` | the **only** place the service-role key is used |
+| `components/GameCard.tsx` | clue rounds + guess input |
+| `components/RevealScreen.tsx` | end-of-game screen |
+| `components/TrainBullets.tsx` | MTA line bullets; guards against "Avenue J" parsing as the J train |
+| `components/admin/AdminDashboard.tsx` | the whole admin UI (large) |
 
 ---
 
@@ -70,8 +96,11 @@ server via the final `/api/guess` (and freeplay) response.
 | `game_state` | In-progress `current_round` + `guesses[]` (for resume). |
 | `profiles` | `display_name`, `streak_count`, `longest_streak`, `total_score`. |
 
-Migrations live in `supabase/migrations/`. The consolidated, idempotent
-schema is in **`SETUP.md`**.
+Migrations live in `supabase/migrations/` (`0001` … `0010`). The
+consolidated, idempotent schema is in **`SETUP.md`**. Migrations are applied
+by hand in the Supabase SQL editor — **if something won't save, check the
+latest migration was actually run** (that was the cause once already:
+`0010_half_baths.sql` turns `baths` into `numeric(3,1)`).
 
 ---
 
@@ -111,14 +140,19 @@ schema is in **`SETUP.md`**.
 - **New/Edit listing**: selects for beds/baths/borough (half baths supported),
   amenity chips, multi-photo upload, optional Google address autocomplete
   (autofills neighborhood/borough/nearest-train + stores lat/lng), listing link.
-- **Import from StreetEasy**: paste a listing link to prefill the form. The
-  URL slug alone yields address/unit/borough (no network needed), which is
-  then geocoded for the exact neighborhood, nearest train and lat/lng. We also
-  make a best-effort read of the page for rent/beds/baths/sqft/amenities/photos
-  — StreetEasy sits behind bot protection, so when that read is blocked the
-  form says so and you can paste the page source (View Page Source → select
-  all) into the fallback box to get the same result. Imported photos are
-  copied into our own Storage bucket rather than hotlinked.
+- **Import from StreetEasy** (`lib/streeteasy.ts` + `/api/admin/import-streeteasy`).
+  Three independent layers, so a failure in one doesn't sink the import:
+  1. **URL slug** — `/building/<addr>-<borough>/<unit>` yields address, unit
+     and borough with no network at all. (`/rental/<id>` URLs yield nothing.)
+  2. **Page read** — best-effort `fetch`, then JSON-LD → `og:` meta → visible
+     text for rent/beds/baths/sqft/amenities/photos. Each attempt records
+     status/bytes/verdict, surfaced in the admin under *"What the fetch got
+     back"*. If it's blocked, paste the page instead — **plain text works**
+     (⌘A/⌘C on the listing); page source additionally gets photos.
+  3. **Geocode** — the address is resolved client-side for exact
+     neighborhood, nearest train + walk time, and lat/lng.
+  Imported photos are de-duplicated by Zillow photo id (the CDN serves one
+  photo at many sizes) and re-hosted into our Storage bucket.
 - **Listings** list: source/status filter, search, EXR sync + photo backfill
   + "Add train lines" buttons, per-row actions.
 - **Featurability:** a listing must be `review_status = ready` **and**
@@ -159,7 +193,11 @@ See `.env.local.example`.
 | `SUPABASE_SERVICE_ROLE_KEY` | **server-only**; the only key that touches game tables |
 | `ADMIN_EMAILS` | comma-separated admin allowlist for `/admin` |
 | `CRON_SECRET` | Bearer secret for cron routes |
-| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | optional; enables admin address autofill |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | optional; enables admin address autofill + nearest-train |
+
+The Maps key needs **Maps JavaScript API** and **Places API**. *Geocoding API*
+is a separate product and often isn't enabled — `geocodeAddress()` falls back
+to a Places lookup when it's missing, so the import still works.
 
 **Security invariant:** `SUPABASE_SERVICE_ROLE_KEY` is referenced only in
 `lib/supabase/admin.ts` (guarded by `import "server-only"`) and never reaches
@@ -179,11 +217,72 @@ EXR sync `0 8 * * 1,4` (Mon + Thu).
 
 ---
 
-## Still open / config-side
+## Known issues (as of the last session)
 
-- Attach **game.resios.co** in Vercel → Domains (CNAME `game` →
-  `cname.vercel-dns.com`).
-- **Google Maps** key + HTTP-referrer restrictions for the renthunch domains.
+The game loop, admin CRUD, scheduling and the EXR pipeline are working in
+production. **The admin listing-import flow is still glitchy** and is the
+place to pick up. Reported and unresolved:
+
+- **Neighborhood sometimes doesn't land in the form after a StreetEasy
+  import.** The server reported filling it and the input *is* bound to
+  `form.neighborhood`, so this couldn't be reproduced by inspection. The
+  import summary was changed to name the values it filled ("neighborhood
+  “Williamsburg”") specifically so the next report can distinguish "the
+  server sent nothing" from "the field didn't update" — **get that message
+  text first**, it decides which half to look at.
+- General "still a little glitchy" feedback on the import flow that hasn't
+  been pinned to a specific reproducible step yet.
+
+Fixed but worth knowing, because they're the shape of bug this area produces:
+
+- Duplicate photos on import — Zillow serves one photo at many sizes under
+  different URLs; deduped on photo id now.
+- The address had no form field at all, only a "📍" line, which read as
+  "didn't fill in".
+- Map pin/walk-time silently missing because the Geocoding API isn't enabled
+  (Places fallback added).
+- Manual saves failing with no explanation — the routes swallowed the
+  Postgres error. `lib/db-error.ts` now translates it.
+
+### Debugging this area
+
+1. The admin surfaces real errors now — read the on-screen message before
+   theorizing; it carries the Postgres error and the fetch verdicts.
+2. `console.error` lines in the listing routes show up in Vercel runtime logs.
+3. `lib/streeteasy.ts` is pure and dependency-free — the fastest loop is a
+   throwaway `npx tsx` script feeding it fixture HTML/text, not a deploy.
+
+## Still open / not built
+
+- Analytics view (perceived vs. actual rent) — planned, not built.
 - Design tokens are a **placeholder** direction (resios.co has no formal
   brand system yet).
-- Analytics view (perceived vs. actual rent) — planned, not built.
+- Most EXR listings sit as `draft` + on-market, so the featurable pool (and
+  the runway badge) stays small until they lease or are manually approved.
+
+---
+
+## Gotchas
+
+Things that cost real time on this codebase:
+
+- **Next.js 16 renamed `middleware.ts` → `proxy.ts`** and the export is
+  `proxy`, not `middleware`. Using the old name fails the build.
+- **Pages that touch the DB need `export const dynamic = "force-dynamic"`**,
+  or prerendering fails with "supabaseUrl is required".
+- The Supabase env var is `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (integration-
+  managed and locked in Vercel), *not* `..._ANON_KEY`.
+- **Lint is strict**: `react-hooks/set-state-in-effect` and
+  `react-hooks/purity` will fail the build. Put `Math.random()`/`Date.now()`
+  in a lazy `useState` initializer, never in render.
+- `baths` is **`numeric(3,1)`** (migration 0010), so it can come back as
+  `"1.0"` — normalize with `Number()` before comparing to a select option.
+- `@googlemaps/js-api-loader` v2 uses the functional `setOptions()` /
+  `importLibrary()` API; the `Loader` class is deprecated.
+- **Never** reference `SUPABASE_SERVICE_ROLE_KEY` from a `"use client"` file.
+- The Supabase project for this game is `dujfvhlqlslqqxfihaxa`. The ref
+  `eddarevdrkpzurzmebub` is a **different, unrelated production project** —
+  never point anything here at it.
+- Some sandboxes block outbound `streeteasy.com` / `exrplatform.com`, so the
+  scrapers can't be exercised locally there; test the parsers against fixture
+  text instead and verify the network path in a deploy.
