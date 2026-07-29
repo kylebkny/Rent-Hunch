@@ -101,3 +101,34 @@ test("parseListingHtml: JSON-LD address feeds address/borough independent of the
   assert.equal(fields.rent, 5200);
   assert.equal(fields.neighborhood, "Chelsea");
 });
+
+// Regression: every StreetEasy listing page carries site-wide "explore other
+// neighborhoods" nav/footer boilerplate, unrelated to the specific listing.
+// A blind longest-match search across the whole page previously let a long,
+// common name in that boilerplate (e.g. "Bedford-Stuyvesant") beat the
+// listing's real, shorter neighborhood named in its own title/description —
+// reported as imports "getting stuck on Bed-Stuy" regardless of the actual
+// listing.
+test("parseListingHtml: title/description neighborhood beats boilerplate nav elsewhere on the page", () => {
+  const html = `
+    <html><head>
+      <meta property="og:title" content="2 Bed in Bushwick, Brooklyn | StreetEasy" />
+      <meta property="og:description" content="Bright 2 bedroom in Bushwick, Brooklyn. $3,200/mo, 2 bed, 1 bath." />
+    </head><body>
+      <main>Bright 2 bedroom in Bushwick, Brooklyn. $3,200/mo, 2 bed, 1 bath.</main>
+      <footer>
+        <nav>Explore other neighborhoods: Williamsburg, Greenpoint, Bushwick,
+        Bedford-Stuyvesant, Crown Heights, Park Slope, Prospect Heights,
+        Clinton Hill, Fort Greene.</nav>
+      </footer>
+    </body></html>
+  `;
+  const fields = parseListingHtml(html);
+  assert.equal(fields.neighborhood, "Bushwick");
+});
+
+test("parseListingHtml: falls back to full page text when title/description name nothing", () => {
+  const html = `<html><body>Cozy studio in Prospect Heights, Brooklyn. $2,400/mo.</body></html>`;
+  const fields = parseListingHtml(html);
+  assert.equal(fields.neighborhood, "Prospect Heights");
+});

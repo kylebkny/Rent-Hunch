@@ -304,24 +304,42 @@ export function parseListingHtml(html: string): StreetEasyListingFields {
 
   // 4. Neighborhood. Matching our own list first is far more reliable than a
   // shape-based regex, and it keeps the value consistent with the typeahead.
-  // Longest match wins so "East Williamsburg" beats "Williamsburg".
-  const lowerHay = haystack.toLowerCase();
-  for (const candidate of NYC_NEIGHBORHOODS) {
-    const c = candidate.toLowerCase();
-    if (!new RegExp(`\\b${c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(lowerHay)) continue;
-    if (!fields.neighborhood || candidate.length > fields.neighborhood.length) {
-      fields.neighborhood = candidate;
+  // Longest match wins so "East Williamsburg" beats "Williamsburg" — but a
+  // blind search of the *whole* page also catches site-wide "explore other
+  // neighborhoods" nav/footer links that every listing page carries
+  // regardless of which listing it is, and a long unrelated name there (e.g.
+  // "Bedford-Stuyvesant") can out-match the listing's real, shorter
+  // neighborhood. og:title/og:description are StreetEasy's own copy for
+  // *this* listing, so they're authoritative — search those first and only
+  // fall back to the full page text (title + description + visible copy) if
+  // neither names a neighborhood.
+  const titleDesc = `${title} ${description}`;
+  function matchNeighborhood(hay: string): string | null {
+    const lower = hay.toLowerCase();
+    let found: string | null = null;
+    for (const candidate of NYC_NEIGHBORHOODS) {
+      const c = candidate.toLowerCase();
+      if (!new RegExp(`\\b${c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(lower)) continue;
+      if (!found || candidate.length > found.length) found = candidate;
     }
+    return found;
   }
+  fields.neighborhood = matchNeighborhood(titleDesc) ?? matchNeighborhood(haystack);
+
   // Fall back to the shape StreetEasy copy uses: "… in Williamsburg, Brooklyn"
-  // or a bare "Williamsburg, Brooklyn" line.
-  const hood =
-    haystack.match(
-      /\bin\s+([A-Z][A-Za-z'’.\- ]{2,30}?),\s*(Brooklyn|Manhattan|Queens|Bronx|Staten Island|New York)\b/
-    ) ??
-    haystack.match(
-      /\b([A-Z][A-Za-z'’.\- ]{2,30}?),\s*(Brooklyn|Manhattan|Queens|Bronx|Staten Island|New York)\b/
+  // or a bare "Williamsburg, Brooklyn" line — same title/description-first
+  // scoping, for the same boilerplate-pollution reason.
+  function matchHoodBorough(hay: string): RegExpMatchArray | null {
+    return (
+      hay.match(
+        /\bin\s+([A-Z][A-Za-z'’.\- ]{2,30}?),\s*(Brooklyn|Manhattan|Queens|Bronx|Staten Island|New York)\b/
+      ) ??
+      hay.match(
+        /\b([A-Z][A-Za-z'’.\- ]{2,30}?),\s*(Brooklyn|Manhattan|Queens|Bronx|Staten Island|New York)\b/
+      )
     );
+  }
+  const hood = matchHoodBorough(titleDesc) ?? matchHoodBorough(haystack);
   if (hood) {
     fields.neighborhood = fields.neighborhood ?? hood[1].trim();
     fields.borough = fields.borough ?? (hood[2] === "New York" ? "Manhattan" : hood[2]);
