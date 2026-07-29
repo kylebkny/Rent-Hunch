@@ -96,7 +96,11 @@ export function parseStreetEasyUrl(rawUrl: string): StreetEasyUrlParts | null {
   const empty: StreetEasyUrlParts = { address: null, unit: null, borough: null, canonicalUrl };
   if (segments[0] !== "building") return empty;
 
-  const buildingSlug = segments[1] ?? "";
+  // StreetEasy slugs are usually hyphen-separated, but the borough token is
+  // sometimes underscore-separated instead (e.g. "…-new_york" rather than
+  // "…-new-york"). Normalize so both the borough match below and
+  // titleCaseSlug's word-splitting treat it the same way.
+  const buildingSlug = (segments[1] ?? "").replace(/_/g, "-");
   const unitSlug = segments[2] ?? "";
 
   // Trailing borough token, when present, is not part of the street address.
