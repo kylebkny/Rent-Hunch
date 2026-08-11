@@ -22,7 +22,7 @@ export async function GET() {
 
   const { data: todayChallenge } = await admin
     .from("daily_challenges")
-    .select("id")
+    .select("id, listing_id, listings(neighborhood, beds, baths, actual_rent)")
     .eq("challenge_date", today)
     .maybeSingle();
 
@@ -38,11 +38,27 @@ export async function GET() {
   // Days of content on hand: today (if set) + future scheduled + the ready pool.
   const runwayDays = (todayChallenge ? 1 : 0) + scheduledCount + (poolCount ?? 0);
 
+  const todayListing = todayChallenge
+    ? Array.isArray(todayChallenge.listings)
+      ? todayChallenge.listings[0]
+      : todayChallenge.listings
+    : null;
+
   return NextResponse.json({
     today,
     has_today: !!todayChallenge,
     pool_count: poolCount ?? 0,
     runway_days: runwayDays,
+    // Today's featured listing, so the admin can jump straight to editing
+    // it (e.g. to fix a missing geocode) without hunting through the list.
+    today_listing: todayChallenge
+      ? {
+          listing_id: todayChallenge.listing_id,
+          label: todayListing
+            ? `${todayListing.neighborhood} · ${formatBedsBaths(todayListing.beds, todayListing.baths)} · $${todayListing.actual_rent.toLocaleString()}`
+            : "—",
+        }
+      : null,
     scheduled: (scheduled ?? []).map((s) => {
       const l = Array.isArray(s.listings) ? s.listings[0] : s.listings;
       return {

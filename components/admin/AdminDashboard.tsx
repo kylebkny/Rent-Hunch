@@ -87,6 +87,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     has_today: boolean;
     pool_count?: number;
     runway_days?: number;
+    today_listing?: { listing_id: string; label: string } | null;
     scheduled: { challenge_date: string; listing_id: string; label: string }[];
   }>({ has_today: false, scheduled: [] });
   const [schedListing, setSchedListing] = useState("");
@@ -288,6 +289,14 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     setGeo({ address: l.address ?? "", lat: l.lat ?? null, lng: l.lng ?? null });
     setMessage(null);
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  /** Jump straight to editing a listing by id — e.g. from the Schedule panel,
+   *  without hunting for it in the list below. */
+  function editListingById(id: string) {
+    const l = listings.find((x) => x.id === id);
+    if (l) startEdit(l);
+    else setMessage("Couldn't find that listing — try refreshing.");
   }
 
   async function handleUpload(files: FileList | null) {
@@ -575,6 +584,20 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
         {!schedule.has_today && (
           <p className="text-sm text-red-600">⚠ No challenge is set for today. Use “Set as today” on a listing below.</p>
         )}
+        {schedule.has_today && schedule.today_listing && (
+          <div className="flex items-center justify-between gap-3 rounded-xl bg-mist px-3 py-2 text-sm">
+            <span className="min-w-0">
+              <span className="font-semibold">Today</span>{" "}
+              <span className="text-muted">· {schedule.today_listing.label}</span>
+            </span>
+            <button
+              onClick={() => editListingById(schedule.today_listing!.listing_id)}
+              className="text-xs underline shrink-0"
+            >
+              Edit
+            </button>
+          </div>
+        )}
         {schedule.scheduled.length === 0 ? (
           <p className="text-sm text-muted">Nothing scheduled ahead. Queue upcoming days below.</p>
         ) : (
@@ -585,9 +608,14 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                   <span className="font-semibold tabular-nums">{s.challenge_date}</span>{" "}
                   <span className="text-muted">· {s.label}</span>
                 </span>
-                <button onClick={() => removeSchedule(s.challenge_date)} className="text-xs text-red-600 underline shrink-0">
-                  Remove
-                </button>
+                <span className="flex items-center gap-3 shrink-0">
+                  <button onClick={() => editListingById(s.listing_id)} className="text-xs underline">
+                    Edit
+                  </button>
+                  <button onClick={() => removeSchedule(s.challenge_date)} className="text-xs text-red-600 underline">
+                    Remove
+                  </button>
+                </span>
               </li>
             ))}
           </ul>
