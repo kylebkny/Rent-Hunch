@@ -23,6 +23,17 @@ export interface GuessAttempt {
   band: WarmthBand;
 }
 
+/**
+ * What spending the puzzle's one hint token reveals — bundled together, not
+ * a choice between them. year_built is null when PLUTO has no match for
+ * this listing (not an error, just nothing on file); map_url is null when
+ * there's no lat/lng to build a radius map from, or no Maps key configured.
+ */
+export interface HintReveal {
+  year_built: number | null;
+  map_url: string | null;
+}
+
 export interface TodayChallengeResponse {
   challenge_id: string;
   edition: number;
@@ -45,6 +56,8 @@ export interface TodayChallengeResponse {
     current_round: number;
     guesses: GuessAttempt[];
   } | null;
+  /** The hint token's reveal, if already spent this puzzle — else null. */
+  hint: HintReveal | null;
 }
 
 /** Intermediate response after a non-final guess. */

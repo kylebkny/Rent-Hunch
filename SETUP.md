@@ -75,6 +75,8 @@ alter table listings add column if not exists listing_url text;
 alter table listings add column if not exists address text;
 alter table listings add column if not exists lat double precision;
 alter table listings add column if not exists lng double precision;
+alter table listings add column if not exists year_built int;
+alter table game_state add column if not exists hint jsonb;
 
 -- Indexes --------------------------------------------------------------
 create index if not exists listings_status_idx on listings(status);

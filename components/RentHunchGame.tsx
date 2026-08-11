@@ -28,6 +28,7 @@ export function RentHunchGame() {
   const [round, setRound] = useState(0);
   const [reveal, setReveal] = useState<CachedReveal | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [usingHint, setUsingHint] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -117,6 +118,26 @@ export function RentHunchGame() {
     }
   }
 
+  async function handleUseHint() {
+    if (!today || today.hint || usingHint) return;
+    setUsingHint(true);
+    try {
+      const res = await fetch("/api/hint", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ challenge_id: today.challenge_id }),
+      });
+      if (!res.ok) {
+        setErrorMessage("Couldn't reveal the hint. Please try again.");
+        return;
+      }
+      const data = await res.json();
+      setToday((t) => (t ? { ...t, hint: data.reveal } : t));
+    } finally {
+      setUsingHint(false);
+    }
+  }
+
   if (status === "loading") {
     return <p className="text-center text-faint">Pulling the file…</p>;
   }
@@ -172,6 +193,9 @@ export function RentHunchGame() {
         onSubmit={handleSubmit}
         submitting={submitting}
         sliderMax={today.slider_max}
+        hint={today.hint}
+        onUseHint={handleUseHint}
+        usingHint={usingHint}
       />
     );
   }

@@ -36,11 +36,19 @@ Supabase project.
    `POST /api/guess`, which returns a **hint** (too high/low + warmer/colder,
    🟩/🟨/🟥) *without* the rent. A new clue unlocks each round:
    - Round 0: neighborhood (+ a "vibe" descriptor for non-locals)
-   - Round 1: beds/baths (+ sqft if known)
-   - Round 2: amenities
-   - Round 3: nearest train — line bullets + station + walk time, e.g.
-     ⓁⒼ Lorimer St · 4 min walk — plus nearby places
-   - The listing **photos** reveal progressively alongside.
+   - Round 1: beds/baths (+ sqft if known) + nearest train — line bullets +
+     station + walk time, e.g. ⓁⒼ Lorimer St · 4 min walk
+   - Round 2: amenities + nearby places
+   - Round 3: no new clue — this is the lock-in round.
+   - The listing **photos** reveal progressively alongside (percentage of
+     the total per round, not a fixed count — see `lib/photo-reveal.ts`).
+   - Once per puzzle, the player can also spend a **hint token**
+     (`POST /api/hint`) at any point before locking in, revealing
+     `year_built` (NYC PLUTO) plus a Static Maps radius circle around a
+     server-side-jittered point — never the real lat/lng, and the same
+     jittered reveal every time it's re-fetched. Costs the same score-tier
+     hit as finishing one guess round later (see `lib/scoring.ts`'s existing
+     multiplier tiers — no separate penalty scale).
 4. The final guess (4th, an exact hit, or "lock in") returns the **only**
    response that contains `actual_rent`: score, crowd average, percentile,
    streak, the full guess trail, and a link to the original listing.
@@ -71,9 +79,13 @@ casual rounds — no streak, no leaderboard, nothing persisted.
 | `lib/neighborhoods.ts` | one-line "vibe" copy per neighborhood |
 | `lib/streeteasy.ts` | StreetEasy URL + page parsing (pure, easy to unit-test) |
 | `lib/exr/` | EXR scraper, ingest, photo re-host, sync |
+| `lib/pluto.ts` / `lib/pluto-core.ts` | NYC PLUTO `year_built` lookup by address/lat-lng (guarded re-export + pure/testable core) |
+| `lib/radius-map.ts` | hint-token jitter + Static Maps circle-path math (pure/testable) |
+| `lib/guess-slider.ts` | log-scale guess slider math (pure/testable) |
+| `lib/photo-reveal.ts` | percentage-per-round photo unlock count (pure/testable) |
 | `lib/db-error.ts` | translates Postgres errors into actionable admin messages |
 | `lib/supabase/admin.ts` | the **only** place the service-role key is used |
-| `components/GameCard.tsx` | clue rounds + guess input |
+| `components/GameCard.tsx` | clue rounds + guess input + hint token UI |
 | `components/RevealScreen.tsx` | end-of-game screen |
 | `components/TrainBullets.tsx` | MTA line bullets; guards against "Avenue J" parsing as the J train |
 | `components/admin/AdminDashboard.tsx` | the whole admin UI (large) |
@@ -89,14 +101,14 @@ server via the final `/api/guess` (and freeplay) response.
 
 | Table | Purpose |
 |---|---|
-| `listings` | The rentals. Clues + `actual_rent`, `photos[]`, `address/lat/lng`, `source` (manual\|exr), `review_status` (draft\|ready), `is_off_market`, `exr_listing_url`, `listing_url`. |
+| `listings` | The rentals. Clues + `actual_rent`, `photos[]`, `address/lat/lng`, `year_built` (NYC PLUTO, `lib/pluto.ts`), `source` (manual\|exr), `review_status` (draft\|ready), `is_off_market`, `exr_listing_url`, `listing_url`. |
 | `daily_challenges` | One listing per date. `edition` = chronological "#N". |
 | `scheduled_challenges` | Queue of `challenge_date → listing_id` the cron consults. |
 | `guesses` | Final result per user/challenge (unique). Feeds leaderboard/history/crowd. |
-| `game_state` | In-progress `current_round` + `guesses[]` (for resume). |
+| `game_state` | In-progress `current_round` + `guesses[]` + `hint` (hint-token reveal, once spent) — for resume. |
 | `profiles` | `display_name`, `streak_count`, `longest_streak`, `total_score`. |
 
-Migrations live in `supabase/migrations/` (`0001` … `0010`). The
+Migrations live in `supabase/migrations/` (`0001` … `0011`). The
 consolidated, idempotent schema is in **`SETUP.md`**. Migrations are applied
 by hand in the Supabase SQL editor — **if something won't save, check the
 latest migration was actually run** (that was the cause once already:
@@ -110,6 +122,8 @@ latest migration was actually run** (that was the cause once already:
 - `GET  /api/challenge/today` — today's clues + resume state (no rent).
 - `POST /api/guess` — records a guess; returns a hint, or the final result
   (the one place `actual_rent` is exposed).
+- `POST /api/hint` — spend the puzzle's one hint token (year_built + a
+  radius map around a jittered point); idempotent once spent.
 - `PATCH /api/state` — persists the current clue round.
 - `PATCH /api/profile` — set the leaderboard display name (anonymous OK).
 - `GET  /api/freeplay/random`, `POST /api/freeplay/guess` — stateless freeplay.
@@ -123,6 +137,8 @@ latest migration was actually run** (that was the cause once already:
 - `POST /api/admin/enrich-exr` — backfill photos for photo-less EXR listings.
 - `POST /api/admin/schedule/autofill` — queue ready listings onto empty dates.
 - `POST /api/admin/fix-transit` — backfill train lines onto station-only clues.
+- `POST /api/admin/backfill-year-built` — backfill `year_built` (NYC PLUTO)
+  onto listings that predate the feature, any source.
 - `POST /api/admin/import-streeteasy` — prefill the form from a StreetEasy link.
 
 **Cron** (Bearer `CRON_SECRET`, configured in `vercel.json`)

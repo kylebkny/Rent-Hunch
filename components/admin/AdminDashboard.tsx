@@ -97,6 +97,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   const [showPaste, setShowPaste] = useState(false);
   const [importing, setImporting] = useState(false);
   const [fixingTransit, setFixingTransit] = useState(false);
+  const [backfillingYearBuilt, setBackfillingYearBuilt] = useState(false);
   const [importDiag, setImportDiag] = useState<string | null>(null);
   const [tomorrow] = useState(() => new Date(Date.now() + 86_400_000).toISOString().slice(0, 10));
   const [syncing, setSyncing] = useState(false);
@@ -430,6 +431,24 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
       load();
     } else {
       setMessage(d.error ?? "Could not fix train clues.");
+    }
+  }
+
+  /** Backfill year_built (NYC PLUTO) onto listings that predate the feature. */
+  async function backfillYearBuilt() {
+    setBackfillingYearBuilt(true);
+    const res = await fetch("/api/admin/backfill-year-built", { method: "POST" });
+    const d = await res.json();
+    setBackfillingYearBuilt(false);
+    if (res.ok) {
+      setMessage(
+        d.filled > 0
+          ? `Added year built to ${d.filled} of ${d.scanned} listings.`
+          : "No PLUTO matches found for listings missing a year built."
+      );
+      load();
+    } else {
+      setMessage(d.error ?? "Could not backfill year built.");
     }
   }
 
@@ -798,6 +817,13 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
               className="rounded-full bg-paper/10 text-paper text-xs px-3 py-1 hover:bg-paper/20 transition disabled:opacity-50"
             >
               {fixingTransit ? "Fixing…" : "🚇 Add train lines"}
+            </button>
+            <button
+              onClick={backfillYearBuilt}
+              disabled={backfillingYearBuilt}
+              className="rounded-full bg-paper/10 text-paper text-xs px-3 py-1 hover:bg-paper/20 transition disabled:opacity-50"
+            >
+              {backfillingYearBuilt ? "Backfilling…" : "🏗️ Backfill year built"}
             </button>
           </div>
           <div className="flex gap-1 text-xs">

@@ -67,11 +67,15 @@ export async function POST(request: Request) {
   // In-progress guesses so far.
   const { data: state } = await admin
     .from("game_state")
-    .select("guesses")
+    .select("guesses, hint")
     .eq("user_id", user.id)
     .eq("challenge_id", challenge_id)
     .maybeSingle();
   const prior: GuessAttempt[] = Array.isArray(state?.guesses) ? (state!.guesses as GuessAttempt[]) : [];
+  // Spending the hint token costs the same multiplier tier as finishing one
+  // guess-round later — reuse lib/scoring.ts's existing tiers rather than a
+  // new penalty scale, by just scoring against guessesUsed + 1.
+  const hintTokenUsed = !!state?.hint;
 
   const hint = hintFor(guess_amount, actualRent);
   const attempt: GuessAttempt = { amount: guess_amount, direction: hint.direction, band: hint.band };
@@ -94,7 +98,7 @@ export async function POST(request: Request) {
     Math.abs(g.amount - actualRent) < Math.abs(best - actualRent) ? g.amount : best,
     guesses[0].amount
   );
-  const score = computeScore(bestGuess, actualRent, guessesUsed);
+  const score = computeScore(bestGuess, actualRent, hintTokenUsed ? guessesUsed + 1 : guessesUsed);
 
   const { error: insertError } = await admin.from("guesses").insert({
     user_id: user.id,

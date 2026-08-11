@@ -2,6 +2,12 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ExrListingRaw } from "@/lib/exr/scraper";
 import { deriveTransit, KNOWN_NEIGHBORHOODS } from "@/lib/transit";
+import { lookupYearBuilt } from "@/lib/pluto";
+import { mapWithConcurrency } from "@/lib/concurrency";
+
+// PLUTO lookups run per newly-discovered listing during a sync — bound how
+// many are in flight at once rather than firing the whole batch together.
+const PLUTO_CONCURRENCY = 5;
 
 const KNOWN = new Set(KNOWN_NEIGHBORHOODS.map((n) => n.toLowerCase()));
 const ELIGIBLE_BOROUGHS = new Set(["brooklyn", "manhattan"]);
@@ -48,6 +54,9 @@ function toInsertRow(raw: ExrListingRaw) {
     actual_rent: raw.rent!,
     photos: raw.photos, // EXR CDN URLs (hybrid); re-host at vet time if desired
     address: raw.address || null,
+    // EXR doesn't scrape lat/lng, so PLUTO enrichment here runs address-only
+    // — filled in just before insert, see below.
+    year_built: null as number | null,
     source: "exr" as const,
     review_status: "draft" as const,
     is_off_market: false,
@@ -102,6 +111,14 @@ export async function ingestScrapedListings(
       await admin.from("listings").update(update).eq("id", found.id);
       updated++;
     }
+  }
+
+  // Enrich only the genuinely new rows — year_built doesn't change between
+  // syncs, so there's no reason to re-look-up an existing listing every run.
+  if (toInsert.length > 0) {
+    await mapWithConcurrency(toInsert, PLUTO_CONCURRENCY, async (row) => {
+      row.year_built = await lookupYearBuilt({ address: row.address, lat: null, lng: null });
+    });
   }
 
   let inserted = 0;

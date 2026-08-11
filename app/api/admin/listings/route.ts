@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { describeDbError } from "@/lib/db-error";
+import { lookupYearBuilt } from "@/lib/pluto";
 
 interface ListingBody {
   neighborhood?: string;
@@ -66,6 +67,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `Missing/invalid: ${errors.join(", ")}` }, { status: 400 });
   }
 
+  const address = body.address?.trim() || null;
+  const lat = typeof body.lat === "number" ? body.lat : null;
+  const lng = typeof body.lng === "number" ? body.lng : null;
+
+  // Independent of listing source (manual entry, or a StreetEasy import
+  // saved through this same endpoint) — never blocks the save if it fails.
+  const yearBuilt = await lookupYearBuilt({ address, lat, lng });
+
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("listings")
@@ -81,9 +90,10 @@ export async function POST(request: Request) {
       actual_rent: body.actual_rent,
       photos: body.photos ?? [],
       listing_url: body.listing_url?.trim() || null,
-      address: body.address?.trim() || null,
-      lat: typeof body.lat === "number" ? body.lat : null,
-      lng: typeof body.lng === "number" ? body.lng : null,
+      address,
+      lat,
+      lng,
+      year_built: yearBuilt,
       source: "manual",
       review_status: body.review_status ?? "ready",
       status: "active",

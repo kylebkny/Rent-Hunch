@@ -24,7 +24,7 @@ import {
   positionToRent,
   rentToPosition,
 } from "@/lib/guess-slider";
-import type { GuessAttempt, ListingClues } from "@/lib/types";
+import type { GuessAttempt, HintReveal, ListingClues } from "@/lib/types";
 
 interface GameCardProps {
   clues: ListingClues;
@@ -35,6 +35,14 @@ interface GameCardProps {
   submitting: boolean;
   /** Slider ceiling from the featurable-listing pool; falls back if unset. */
   sliderMax?: number;
+  /**
+   * Hint token state. Omit entirely to hide the hint UI (freeplay doesn't
+   * have per-puzzle game_state to persist a spent token against). `null`
+   * means unspent; an object means it's been spent and this is the reveal.
+   */
+  hint?: HintReveal | null;
+  onUseHint?: () => void;
+  usingHint?: boolean;
 }
 
 function warmthClass(band: WarmthBand): string {
@@ -43,11 +51,25 @@ function warmthClass(band: WarmthBand): string {
   return "text-blue-500";
 }
 
-export function GameCard({ clues, photos, round, attempts, onSubmit, submitting, sliderMax }: GameCardProps) {
+export function GameCard({
+  clues,
+  photos,
+  round,
+  attempts,
+  onSubmit,
+  submitting,
+  sliderMax,
+  hint,
+  onUseHint,
+  usingHint,
+}: GameCardProps) {
   const [guess, setGuess] = useState(2500);
   const guessesLeft = MAX_GUESSES - attempts.length;
   const last = attempts[attempts.length - 1];
   const max = sliderMax ?? DEFAULT_SLIDER_MAX;
+  // Spending the token costs the same multiplier tier as one guess-round
+  // later (lib/scoring.ts) — reflected here so the point preview stays honest.
+  const hintPenalty = hint ? 1 : 0;
 
   function adjust(pct: number) {
     setGuess((g) => Math.max(SLIDER_MIN, Math.round((g * (1 + pct)) / GUESS_STEP) * GUESS_STEP));
@@ -94,21 +116,66 @@ export function GameCard({ clues, photos, round, attempts, onSubmit, submitting,
             sub={describeNeighborhood(clues.neighborhood)}
           />
           {round >= 1 && (
-            <ClueRow
-              label="Layout"
-              value={
-                `${clues.beds === 0 ? "Studio" : `${clues.beds} bed`} · ${formatBaths(clues.baths)}` +
-                (clues.sqft ? ` · ${clues.sqft.toLocaleString()} sqft` : "")
-              }
-            />
+            <>
+              <ClueRow
+                label="Layout"
+                value={
+                  `${clues.beds === 0 ? "Studio" : `${clues.beds} bed`} · ${formatBaths(clues.baths)}` +
+                  (clues.sqft ? ` · ${clues.sqft.toLocaleString()} sqft` : "")
+                }
+              />
+              <ClueRow label="Nearest train" value={<TrainBullets transit={clues.transit} />} />
+            </>
           )}
           {round >= 2 && (
-            <ClueRow label="Amenities" value={clues.amenities.length > 0 ? clues.amenities.join(" · ") : "None on file"} />
+            <>
+              <ClueRow label="Amenities" value={clues.amenities.length > 0 ? clues.amenities.join(" · ") : "None on file"} />
+              {clues.nearby && <ClueRow label="Nearby" value={clues.nearby} />}
+            </>
           )}
-          {round >= 3 && <ClueRow label="Nearest train" value={<TrainBullets transit={clues.transit} />} />}
-          {round >= 3 && clues.nearby && <ClueRow label="Nearby" value={clues.nearby} />}
         </dl>
       </div>
+
+      {hint !== undefined && (
+        <div className="rounded-2xl bg-mist p-4 flex flex-col gap-2">
+          <span className="eyebrow">Hint token</span>
+          {hint ? (
+            <>
+              {hint.year_built != null && (
+                <p className="text-sm">
+                  <span className="font-semibold">Built</span> {hint.year_built}
+                </p>
+              )}
+              {hint.map_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={hint.map_url}
+                  alt="Approximate area around the listing"
+                  className="w-full rounded-xl"
+                />
+              )}
+              {hint.year_built == null && !hint.map_url && (
+                <p className="text-xs text-muted">Nothing extra on file for this one.</p>
+              )}
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={onUseHint}
+                disabled={usingHint}
+                className="self-start rounded-full border border-line px-4 py-2 text-sm font-medium hover:border-ink transition disabled:opacity-50"
+              >
+                {usingHint ? "Revealing…" : "🔍 Use hint token"}
+              </button>
+              <p className="text-xs text-muted">
+                One per puzzle — reveals when it was built and roughly where, but costs
+                about as much as a guess round would.
+              </p>
+            </>
+          )}
+        </div>
+      )}
 
       {attempts.length > 0 && (
         <div className="flex flex-col gap-1.5">
@@ -177,7 +244,7 @@ export function GameCard({ clues, photos, round, attempts, onSubmit, submitting,
               disabled={submitting}
               className="w-full text-sm font-medium text-muted hover:text-ink transition disabled:opacity-50"
             >
-              Lock in this answer — up to {maxScoreForGuesses(attempts.length + 1)} pts
+              Lock in this answer — up to {maxScoreForGuesses(attempts.length + 1 + hintPenalty)} pts
             </button>
           </>
         ) : (

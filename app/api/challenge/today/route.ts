@@ -3,7 +3,7 @@ import { createClient as createAuthClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getMaxFeaturedRent } from "@/lib/listings-pool";
 import { computeSliderMax } from "@/lib/guess-slider";
-import type { TodayChallengeResponse } from "@/lib/types";
+import type { HintReveal, TodayChallengeResponse } from "@/lib/types";
 
 function todayET(): string {
   // en-CA gives YYYY-MM-DD, matching Postgres `date` literal format.
@@ -56,7 +56,7 @@ export async function GET() {
       .maybeSingle(),
     admin
       .from("game_state")
-      .select("current_round, guesses")
+      .select("current_round, guesses, hint")
       .eq("user_id", user.id)
       .eq("challenge_id", challenge.id)
       .maybeSingle(),
@@ -92,6 +92,7 @@ export async function GET() {
           guesses: Array.isArray(state.guesses) ? state.guesses : [],
         }
       : null,
+    hint: (state?.hint as HintReveal | null) ?? null,
   };
 
   return NextResponse.json(body);

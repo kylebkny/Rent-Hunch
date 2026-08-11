@@ -19,6 +19,7 @@ interface PatchBody {
   address?: string | null;
   lat?: number | null;
   lng?: number | null;
+  year_built?: number | null;
   review_status?: "draft" | "ready";
   status?: "active" | "used";
   is_off_market?: boolean;
@@ -27,7 +28,7 @@ interface PatchBody {
 const ALLOWED_FIELDS: (keyof PatchBody)[] = [
   "neighborhood", "city", "beds", "baths", "sqft", "amenities",
   "transit", "nearby", "actual_rent", "photos", "listing_url",
-  "address", "lat", "lng", "review_status", "status", "is_off_market",
+  "address", "lat", "lng", "year_built", "review_status", "status", "is_off_market",
 ];
 
 export async function PATCH(
