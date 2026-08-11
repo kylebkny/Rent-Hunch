@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getMaxFeaturedRent } from "@/lib/listings-pool";
+import { computeSliderMax } from "@/lib/guess-slider";
 import type { ListingClues } from "@/lib/types";
 
 function todayET(): string {
@@ -30,7 +32,7 @@ export async function GET() {
     idQuery = idQuery.neq("id", todayChallenge.listing_id);
   }
 
-  const { data: ids } = await idQuery;
+  const [{ data: ids }, maxFeaturedRent] = await Promise.all([idQuery, getMaxFeaturedRent(admin)]);
   if (!ids || ids.length === 0) {
     return NextResponse.json({ error: "No listings available for freeplay yet" }, { status: 404 });
   }
@@ -62,5 +64,6 @@ export async function GET() {
     listing_id: listing.id,
     clues,
     photos: Array.isArray(listing.photos) ? listing.photos : [],
+    slider_max: computeSliderMax(maxFeaturedRent),
   });
 }

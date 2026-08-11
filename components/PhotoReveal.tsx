@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { unlockedPhotoCount } from "@/lib/photo-reveal";
 
 interface PhotoRevealProps {
   photos: string[];
@@ -11,7 +12,7 @@ interface PhotoRevealProps {
 const BLUR_BY_ROUND = ["blur(14px)", "blur(8px)", "blur(3px)", "blur(0px)"];
 
 export function PhotoReveal({ photos, round }: PhotoRevealProps) {
-  const unlocked = Math.min(round + 1, photos.length);
+  const unlocked = unlockedPhotoCount(round, photos.length);
   const [selected, setSelected] = useState(unlocked - 1);
   const [prevUnlocked, setPrevUnlocked] = useState(unlocked);
 

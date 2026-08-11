@@ -29,6 +29,11 @@ export interface TodayChallengeResponse {
   challenge_date: string;
   clues: ListingClues;
   photos: string[];
+  /**
+   * Ceiling for the guess slider, derived from the whole featurable-listing
+   * pool (never today's specific listing) — see lib/listings-pool.ts.
+   */
+  slider_max: number;
   /** Present if the caller already finished today. */
   guess: {
     round: number;

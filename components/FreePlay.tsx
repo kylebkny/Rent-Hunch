@@ -14,6 +14,7 @@ interface Round {
   listing_id: string;
   clues: ListingClues;
   photos: string[];
+  slider_max: number;
 }
 
 interface Result {
@@ -111,6 +112,7 @@ export function FreePlay() {
         attempts={attempts}
         onSubmit={handleSubmit}
         submitting={submitting}
+        sliderMax={round.slider_max}
       />
     );
   }

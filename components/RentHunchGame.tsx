@@ -171,6 +171,7 @@ export function RentHunchGame() {
         attempts={attempts}
         onSubmit={handleSubmit}
         submitting={submitting}
+        sliderMax={today.slider_max}
       />
     );
   }

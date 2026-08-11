@@ -16,11 +16,15 @@ import { buzz } from "@/lib/haptics";
 import { describeNeighborhood } from "@/lib/neighborhoods";
 import { formatBaths } from "@/lib/listing-options";
 import { TrainBullets } from "@/components/TrainBullets";
+import {
+  SLIDER_MIN,
+  DEFAULT_SLIDER_MAX,
+  GUESS_STEP,
+  SLIDER_TRACK_STEPS,
+  positionToRent,
+  rentToPosition,
+} from "@/lib/guess-slider";
 import type { GuessAttempt, ListingClues } from "@/lib/types";
-
-const SLIDER_MIN = 1000;
-const SLIDER_MAX = 12000;
-const STEP = 25;
 
 interface GameCardProps {
   clues: ListingClues;
@@ -29,6 +33,8 @@ interface GameCardProps {
   attempts: GuessAttempt[];
   onSubmit: (amount: number, final: boolean) => void;
   submitting: boolean;
+  /** Slider ceiling from the featurable-listing pool; falls back if unset. */
+  sliderMax?: number;
 }
 
 function warmthClass(band: WarmthBand): string {
@@ -37,13 +43,14 @@ function warmthClass(band: WarmthBand): string {
   return "text-blue-500";
 }
 
-export function GameCard({ clues, photos, round, attempts, onSubmit, submitting }: GameCardProps) {
+export function GameCard({ clues, photos, round, attempts, onSubmit, submitting, sliderMax }: GameCardProps) {
   const [guess, setGuess] = useState(2500);
   const guessesLeft = MAX_GUESSES - attempts.length;
   const last = attempts[attempts.length - 1];
+  const max = sliderMax ?? DEFAULT_SLIDER_MAX;
 
   function adjust(pct: number) {
-    setGuess((g) => Math.max(SLIDER_MIN, Math.round((g * (1 + pct)) / STEP) * STEP));
+    setGuess((g) => Math.max(SLIDER_MIN, Math.round((g * (1 + pct)) / GUESS_STEP) * GUESS_STEP));
     sfx.tick();
     buzz.tick();
   }
@@ -141,11 +148,12 @@ export function GameCard({ clues, photos, round, attempts, onSubmit, submitting 
         />
         <input
           type="range"
-          min={SLIDER_MIN}
-          max={SLIDER_MAX}
-          step={STEP}
-          value={Math.min(SLIDER_MAX, Math.max(SLIDER_MIN, guess))}
-          onChange={(e) => setGuess(Number(e.target.value))}
+          min={0}
+          max={SLIDER_TRACK_STEPS}
+          step={1}
+          value={rentToPosition(guess, SLIDER_MIN, max)}
+          onChange={(e) => setGuess(positionToRent(Number(e.target.value), SLIDER_MIN, max))}
+          aria-label="Your guess, drag to adjust"
           className="w-full accent-ink"
         />
         <div className="flex gap-2">

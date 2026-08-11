@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient as createAuthClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getMaxFeaturedRent } from "@/lib/listings-pool";
+import { computeSliderMax } from "@/lib/guess-slider";
 import type { TodayChallengeResponse } from "@/lib/types";
 
 function todayET(): string {
@@ -45,19 +47,21 @@ export async function GET() {
     );
   }
 
-  const { data: existingGuess } = await admin
-    .from("guesses")
-    .select("round, guess_amount, score")
-    .eq("user_id", user.id)
-    .eq("challenge_id", challenge.id)
-    .maybeSingle();
-
-  const { data: state } = await admin
-    .from("game_state")
-    .select("current_round, guesses")
-    .eq("user_id", user.id)
-    .eq("challenge_id", challenge.id)
-    .maybeSingle();
+  const [{ data: existingGuess }, { data: state }, maxFeaturedRent] = await Promise.all([
+    admin
+      .from("guesses")
+      .select("round, guess_amount, score")
+      .eq("user_id", user.id)
+      .eq("challenge_id", challenge.id)
+      .maybeSingle(),
+    admin
+      .from("game_state")
+      .select("current_round, guesses")
+      .eq("user_id", user.id)
+      .eq("challenge_id", challenge.id)
+      .maybeSingle(),
+    getMaxFeaturedRent(admin),
+  ]);
 
   const body: TodayChallengeResponse = {
     challenge_id: challenge.id,
@@ -74,6 +78,7 @@ export async function GET() {
       nearby: listing.nearby ?? null,
     },
     photos: Array.isArray(listing.photos) ? (listing.photos as string[]) : [],
+    slider_max: computeSliderMax(maxFeaturedRent),
     guess: existingGuess
       ? {
           round: existingGuess.round,
