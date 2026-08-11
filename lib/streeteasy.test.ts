@@ -132,3 +132,32 @@ test("parseListingHtml: falls back to full page text when title/description name
   const fields = parseListingHtml(html);
   assert.equal(fields.neighborhood, "Prospect Heights");
 });
+
+// Brooklyn/Manhattan is the focus, but Queens/Bronx/Staten Island listings
+// should get the same reliable whitelist match — not just the "in X,
+// Borough" regex fallback, which depends on that exact phrasing appearing.
+test("parseListingHtml: whitelist match covers Queens, Bronx, and Staten Island too", () => {
+  const astoria = `
+    <html><head>
+      <meta property="og:title" content="Renovated 1 Bed near Astoria Park | StreetEasy" />
+      <meta property="og:description" content="Renovated 1 bedroom close to Astoria Park and the water. $2,300/mo." />
+    </head><body>Renovated 1 bedroom. $2,300/mo.</body></html>
+  `;
+  assert.equal(parseListingHtml(astoria).neighborhood, "Astoria");
+
+  const riverdale = `
+    <html><head>
+      <meta property="og:title" content="Spacious 2 Bed, Riverdale views | StreetEasy" />
+      <meta property="og:description" content="Spacious 2 bedroom overlooking the Riverdale hills. $2,000/mo." />
+    </head><body>Spacious 2 bedroom. $2,000/mo.</body></html>
+  `;
+  assert.equal(parseListingHtml(riverdale).neighborhood, "Riverdale");
+
+  const stGeorge = `
+    <html><head>
+      <meta property="og:title" content="2 Bed steps from the St. George ferry | StreetEasy" />
+      <meta property="og:description" content="2 bedroom steps from the St. George ferry terminal. $2,100/mo." />
+    </head><body>2 bedroom. $2,100/mo.</body></html>
+  `;
+  assert.equal(parseListingHtml(stGeorge).neighborhood, "St. George");
+});

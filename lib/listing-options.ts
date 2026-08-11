@@ -27,8 +27,38 @@ export const MANHATTAN_NEIGHBORHOODS = [
   "Roosevelt Island",
 ];
 
+// Brooklyn and Manhattan are the focus, but the game isn't limited to them —
+// these round out the other boroughs so an Astoria or Staten Island listing
+// (imported or EXR-synced) gets the same reliable neighborhood match as a
+// Brooklyn one, instead of depending on page copy happening to say "in X,
+// Borough" verbatim. Queens/Bronx names mirror lib/exr/scraper.ts's own list
+// so the two ingestion paths agree on spelling; EXR doesn't cover Staten
+// Island at all, so that list is sourced independently.
+export const QUEENS_NEIGHBORHOODS = [
+  "Astoria", "Long Island City", "Flushing", "Jackson Heights", "Forest Hills",
+  "Jamaica", "Bayside", "Sunnyside", "Woodside", "Corona", "Elmhurst",
+  "Rego Park", "Maspeth", "Glendale", "Middle Village", "Ridgewood",
+  "Ozone Park", "Richmond Hill", "South Ozone Park", "Springfield Gardens",
+];
+
+export const BRONX_NEIGHBORHOODS = [
+  "South Bronx", "Fordham", "Riverdale", "Pelham", "Mott Haven",
+  "Concourse", "Tremont", "Belmont", "Norwood", "Port Morris",
+];
+
+export const STATEN_ISLAND_NEIGHBORHOODS = [
+  "St. George", "Stapleton", "Tompkinsville", "New Brighton", "West Brighton",
+  "Great Kills", "Tottenville", "New Dorp", "Port Richmond",
+];
+
 // Combined list for the neighborhood typeahead.
-export const NYC_NEIGHBORHOODS = [...BROOKLYN_NEIGHBORHOODS, ...MANHATTAN_NEIGHBORHOODS];
+export const NYC_NEIGHBORHOODS = [
+  ...BROOKLYN_NEIGHBORHOODS,
+  ...MANHATTAN_NEIGHBORHOODS,
+  ...QUEENS_NEIGHBORHOODS,
+  ...BRONX_NEIGHBORHOODS,
+  ...STATEN_ISLAND_NEIGHBORHOODS,
+];
 
 export const AMENITY_OPTIONS = [
   "Dishwasher", "In-unit Laundry", "Laundry in Building", "Elevator",
