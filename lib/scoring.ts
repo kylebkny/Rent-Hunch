@@ -20,7 +20,13 @@ const ZERO_SCORE_ERROR_FRACTION = 0.5;
 
 // Gentle multiplier by guesses used (index = guessesUsed - 1). Solving in
 // one guess is full value; using all four shaves ~10%.
-const GUESS_MULTIPLIER = [1.0, 0.97, 0.94, 0.9] as const;
+//
+// A 5th tier exists solely for the hint token (app/api/guess/route.ts scores
+// against guessesUsed + 1 when it was spent): since the hint only becomes
+// available at round 3, guessesUsed is always 3-4 by the time it's used, so
+// a mere "+1" would land on the same 0.9 floor as not using it at all —
+// index 4 is a real step down specifically so the token has a felt cost.
+const GUESS_MULTIPLIER = [1.0, 0.97, 0.94, 0.9, 0.83] as const;
 
 function guessMultiplier(guessesUsed: number): number {
   const i = Math.max(0, guessesUsed - 1);

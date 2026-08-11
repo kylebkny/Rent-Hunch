@@ -136,7 +136,29 @@ export function GameCard({
         </dl>
       </div>
 
-      {hint !== undefined && (
+      {attempts.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <p className="eyebrow">Your guesses</p>
+          {attempts.map((a, i) => (
+            <div key={i} className="flex items-center justify-between text-sm">
+              <span className="tabular-nums font-medium">${a.amount.toLocaleString()}</span>
+              <span className={`flex items-center gap-1.5 ${warmthClass(a.band)}`}>
+                {DIRECTION_LABEL[a.direction]} · {BAND_LABEL[a.band]} {bandEmoji(a.band)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {last && (
+        <p className={`text-center text-sm font-medium ${warmthClass(last.band)}`}>
+          {last.direction === "exact"
+            ? "Nailed it!"
+            : `${DIRECTION_LABEL[last.direction]} — ${BAND_LABEL[last.band].toLowerCase()}. Try again.`}
+        </p>
+      )}
+
+      {round >= 3 && hint !== undefined && (
         <div className="rounded-2xl bg-mist p-4 flex flex-col gap-2">
           <span className="eyebrow">Hint token</span>
           {hint ? (
@@ -169,34 +191,12 @@ export function GameCard({
                 {usingHint ? "Revealing…" : "🔍 Use hint token"}
               </button>
               <p className="text-xs text-muted">
-                One per puzzle — reveals when it was built and roughly where, but costs
+                Reveals when it was built and roughly where, but costs
                 about as much as a guess round would.
               </p>
             </>
           )}
         </div>
-      )}
-
-      {attempts.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          <p className="eyebrow">Your guesses</p>
-          {attempts.map((a, i) => (
-            <div key={i} className="flex items-center justify-between text-sm">
-              <span className="tabular-nums font-medium">${a.amount.toLocaleString()}</span>
-              <span className={`flex items-center gap-1.5 ${warmthClass(a.band)}`}>
-                {DIRECTION_LABEL[a.direction]} · {BAND_LABEL[a.band]} {bandEmoji(a.band)}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {last && (
-        <p className={`text-center text-sm font-medium ${warmthClass(last.band)}`}>
-          {last.direction === "exact"
-            ? "Nailed it!"
-            : `${DIRECTION_LABEL[last.direction]} — ${BAND_LABEL[last.band].toLowerCase()}. Try again.`}
-        </p>
       )}
 
       <div className="flex flex-col gap-3">
